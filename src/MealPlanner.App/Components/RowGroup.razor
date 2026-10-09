@@ -1,0 +1,7 @@
+<div class="group" @attributes="Attributes">@ChildContent</div>
+
+@code {
+    /// <summary>Rows are the direct children; each gets a 1px divider above it except the first.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? Attributes { get; set; }
+}

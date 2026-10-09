@@ -210,6 +210,9 @@ A pure function from (list items, markets, meals in plan order, view) to groups 
   5. saves with `IStore.SaveAsync`
   6. raises `OnChange`
   7. calls `SyncService.RequestSync()`
+- Steps 3–7 live in one place, `EntityWriter.SaveAsync(entities)`. Services validate and build the records, then make one `SaveAsync` call per operation.
+- Services request syncs through `ISyncTrigger`. While `Features:RequireAuth` is false, `NoSyncTrigger` is registered and changes simply stay in the outbox; from M6 `SyncService` implements it.
+- Editors hand services plain drafts: `MealDraft(Id?, Name, Notes, Ingredients)` and `IngredientDraft(Id?, Name, Unit, DefaultMarketId, IsStaple)`. Each service also exposes `Validate(draft)`/`ValidateName(...)` so Save buttons can stay disabled until valid.
 
 | Service | Methods |
 | --- | --- |

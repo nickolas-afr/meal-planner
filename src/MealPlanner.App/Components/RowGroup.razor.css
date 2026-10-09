@@ -1,0 +1,10 @@
+.group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+}
+
+.group > ::deep :where(:not(:first-child)) {
+    border-top: 1px solid var(--divider);
+}

@@ -1,0 +1,152 @@
+@page "/settings"
+@implements IAsyncDisposable
+@inject AppState State
+@inject MarketService MarketSvc
+@inject IJSRuntime JS
+
+<PageTitle>Settings</PageTitle>
+<NavHeader BackHref="/meals" BackLabel="Meals" Title="Settings" />
+
+<div class="content">
+    @* Later milestones add the Household, Backup and Account sections here. *@
+    <section>
+        <h2 class="t-section-label">Markets</h2>
+        <div class="card">
+            @* Sortable owns the DOM of this element's children, so @key changes after each reorder to rebuild it. *@
+            <div class="list" @ref="_list" @key="_listKey">
+                @foreach (var m in _markets)
+                {
+                    <div class="mrow" data-id="@m.Id" @key="m.Id">
+                        <button type="button" class="mname" @onclick="() => OpenEdit(m)">@m.Name</button>
+                        <span class="drag-handle" aria-label="Reorder @m.Name" role="img"><DragHandleIcon Size="22" /></span>
+                    </div>
+                }
+            </div>
+            <form class="add" @onsubmit="AddAsync">
+                <div class="addfield">
+                    <input type="text" aria-label="Add a market" placeholder="Add a market" maxlength="40"
+                           autocomplete="off" value="@_newName" @oninput="OnNewInput"
+                           aria-invalid="@(AddError is null ? null : "true")" aria-describedby="@(AddError is null ? null : "add-err")" />
+                    <button type="submit" class="addbtn" disabled="@(NewInvalid)">Add</button>
+                </div>
+                <FieldError Id="add-err" Message="@AddError" />
+            </form>
+        </div>
+        <p class="note t-secondary">@(_markets.Count == 0
+            ? "No markets yet. Everything goes under Anywhere."
+            : "Order them the way you shop. Items are grouped by these on the shopping list.")</p>
+    </section>
+</div>
+
+<BottomSheet Open="_editing is not null && !_confirmDelete" Title="Market" ConfirmText="Save"
+             ConfirmDisabled="@(EditError is not null || string.IsNullOrWhiteSpace(_editName))"
+             OnConfirm="SaveEditAsync" OnCancel="CloseEdit">
+    <div class="sheet-form">
+        <TextField @bind-Value="_editName" Label="Name" MaxLength="40" Error="@EditError" AutoFocus="true" />
+        <PrimaryButton Variant="ButtonVariant.Danger" OnClick="@(() => _confirmDelete = true)">Delete market</PrimaryButton>
+    </div>
+</BottomSheet>
+
+<ConfirmDialog Open="_confirmDelete" Title="@($"Delete {_editing?.Name}?")"
+               Message="@($"Items from {_editing?.Name} will move to Anywhere.")" ConfirmText="Delete" Destructive="true"
+               OnConfirm="DeleteAsync" OnCancel="@(() => _confirmDelete = false)" />
+
+@code {
+    private ElementReference _list;
+    private Guid _listKey = Guid.NewGuid();
+    private DotNetObjectReference<Settings>? _self;
+    private int _sortableId;
+    private bool _needsInit = true;
+    private bool _disposed;
+
+    private string _newName = "";
+    private Market? _editing;
+    private string _editName = "";
+    private bool _confirmDelete;
+
+    private IReadOnlyList<Market> _markets => MarketSvc.All();
+
+    private string? AddError => string.IsNullOrWhiteSpace(_newName) ? null : MarketSvc.ValidateName(_newName, null);
+    private bool NewInvalid => string.IsNullOrWhiteSpace(_newName) || AddError is not null;
+    private string? EditError => _editing is null ? null : MarketSvc.ValidateName(_editName, _editing.Id);
+
+    protected override void OnInitialized()
+    {
+        _self = DotNetObjectReference.Create(this);
+        State.OnChange += OnStateChanged;
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnNewInput(ChangeEventArgs e) => _newName = e.Value?.ToString() ?? "";
+
+    private async Task AddAsync()
+    {
+        if (NewInvalid) return;
+        await MarketSvc.Add(_newName);
+        _newName = "";
+    }
+
+    private void OpenEdit(Market m)
+    {
+        _editing = m;
+        _editName = m.Name;
+        _confirmDelete = false;
+    }
+
+    private void CloseEdit()
+    {
+        _editing = null;
+        _confirmDelete = false;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editing is null || EditError is not null) return;
+        await MarketSvc.Rename(_editing.Id, _editName);
+        CloseEdit();
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_editing is { } m) await MarketSvc.Delete(m.Id);
+        CloseEdit();
+    }
+
+    [JSInvokable]
+    public async Task OnReorder(string[] ids)
+    {
+        var parsed = ids.Select(s => Guid.TryParse(s, out var g) ? g : (Guid?)null)
+            .Where(g => g is not null).Select(g => g!.Value).ToList();
+        await MarketSvc.Reorder(parsed);
+        // Sortable moved DOM nodes Blazor owns: rebuild the list element from scratch and re-init on that render.
+        await DestroySortableAsync();
+        _listKey = Guid.NewGuid();
+        _needsInit = true;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_needsInit || _disposed) return;
+        _needsInit = false;
+        await DestroySortableAsync();
+        _sortableId = await JS.InvokeAsync<int>("mealPlanner.sortable.init", _list, _self, ".drag-handle");
+    }
+
+    private async Task DestroySortableAsync()
+    {
+        if (_sortableId == 0) return;
+        var id = _sortableId;
+        _sortableId = 0;
+        try { await JS.InvokeVoidAsync("mealPlanner.sortable.destroy", id); } catch (JSDisconnectedException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        State.OnChange -= OnStateChanged;
+        await DestroySortableAsync();
+        _self?.Dispose();
+    }
+}

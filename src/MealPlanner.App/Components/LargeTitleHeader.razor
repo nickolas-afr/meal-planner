@@ -1,0 +1,21 @@
+<header class="header">
+    @if (LeftContent is not null || RightContent is not null)
+    {
+        <div class="actions">
+            <div class="left">@LeftContent</div>
+            <div class="right">@RightContent</div>
+        </div>
+    }
+    <h1 class="t-large-title">@Title</h1>
+    @if (!string.IsNullOrEmpty(Subtitle))
+    {
+        <p class="subtitle t-secondary">@Subtitle</p>
+    }
+</header>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public RenderFragment? LeftContent { get; set; }
+    [Parameter] public RenderFragment? RightContent { get; set; }
+}

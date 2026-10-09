@@ -1,0 +1,25 @@
+.field { display: flex; flex-direction: column; }
+
+label {
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-2);
+}
+
+.wrap { position: relative; color: var(--icon-muted); }
+.wrap ::deep .chev { position: absolute; right: 12px; top: 14px; pointer-events: none; }
+
+select {
+    width: 100%;
+    height: 46px;
+    padding: 0 40px 0 14px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-input);
+    color: var(--text);
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+select:disabled { opacity: 0.6; }

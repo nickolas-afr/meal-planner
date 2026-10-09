@@ -1,0 +1,81 @@
+.content { padding: 8px var(--page-x) 32px; }
+
+.name-field ::deep input { font-size: 17px; font-weight: 600; }
+
+.section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 24px 0 10px;
+}
+
+.count { color: var(--text-2); font-weight: 600; margin-left: 4px; }
+
+.none { padding: 20px 4px; }
+
+.ing-row { padding: 8px 4px 8px 16px; }
+
+.line { display: flex; align-items: center; gap: 8px; min-height: 56px; }
+
+.who { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.ing-name { font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.market { font-size: 13px; color: var(--text-2); }
+
+.qty {
+    flex: none;
+    width: 76px;
+    height: 40px;
+    padding: 0 10px;
+    text-align: right;
+    font-size: 16px;
+    color: var(--text);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-input);
+}
+
+.qty.invalid { border-color: var(--danger); }
+
+.unit { flex: none; width: 44px; font-size: 15px; color: var(--text-2); }
+
+.remove {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: var(--text-2);
+}
+
+.add-notes {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-top: 12px;
+    padding: 0 4px;
+    color: var(--text-2);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.notes { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; }
+
+.notes textarea {
+    width: 100%;
+    min-height: calc(3 * 1.4em + 24px);
+    padding: 12px;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--text);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-input);
+    resize: none;
+    field-sizing: content;
+}
+
+.delete { margin-top: 32px; }

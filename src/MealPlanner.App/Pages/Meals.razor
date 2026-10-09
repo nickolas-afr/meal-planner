@@ -1,0 +1,110 @@
+@page "/meals"
+@implements IDisposable
+@inject AppState State
+@inject MealService MealSvc
+
+<PageTitle>Meals</PageTitle>
+
+<LargeTitleHeader Title="Meals" Subtitle="@Subtitle">
+    <LeftContent>
+        <a class="icon-btn" href="/settings" aria-label="Settings"><SlidersIcon Size="24" /></a>
+    </LeftContent>
+    <RightContent>
+        <PrimaryButton Pill="true" Href="/meals/new"><PlusIcon Size="18" /> New meal</PrimaryButton>
+    </RightContent>
+</LargeTitleHeader>
+
+<div class="content">
+    @if (_all.Count == 0)
+    {
+        <EmptyState Title="No meals yet" Text="Add the dishes you cook and what goes in them.">
+            <Icon><BowlIcon Size="28" /></Icon>
+            <ChildContent><PrimaryButton Pill="true" Href="/meals/new">New meal</PrimaryButton></ChildContent>
+        </EmptyState>
+    }
+    else
+    {
+        <SearchField @bind-Value="_query" Placeholder="Search meals" />
+        @if (Filtered.Count == 0)
+        {
+            <p class="no-match t-secondary">No meals match "@_query.Trim()".</p>
+        }
+        else
+        {
+            <ul class="list">
+                @foreach (var meal in Filtered)
+                {
+                    bool planned = MealSvc.IsPlannedInActiveWeek(meal.Id);
+                    int k = meal.Ingredients.Count;
+                    <li>
+                        <a class="meal" href="/meals/@meal.Id">
+                            <span class="tile @(planned ? "planned" : null)" aria-hidden="true">@Monogram(meal.Name)</span>
+                            <span class="info">
+                                <span class="t-row-title name">@meal.Name</span>
+                                <span class="meta t-secondary">
+                                    <span>@k @(k == 1 ? "ingredient" : "ingredients")</span>
+                                    @if (!string.IsNullOrWhiteSpace(meal.Notes))
+                                    {
+                                        <NoteIcon Size="16" Class="note" />
+                                        <span class="visually-hidden">Has notes</span>
+                                    }
+                                    @if (planned)
+                                    {
+                                        <Badge Variant="BadgeVariant.Planned">This week</Badge>
+                                    }
+                                </span>
+                            </span>
+                            <ChevronRightIcon Size="20" Class="chev" />
+                        </a>
+                    </li>
+                }
+            </ul>
+        }
+    }
+</div>
+
+@code {
+    private IReadOnlyList<Meal> _all = [];
+    private string _query = "";
+
+    private IReadOnlyList<Meal> Filtered
+    {
+        get
+        {
+            var q = _query.Trim();
+            return q.Length == 0
+                ? _all
+                : _all.Where(m => m.Name.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+    }
+
+    private string Subtitle
+    {
+        get
+        {
+            int n = _all.Count;
+            int p = _all.Count(m => MealSvc.IsPlannedInActiveWeek(m.Id));
+            return $"{n} {(n == 1 ? "meal" : "meals")} · {p} planned this week";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        _all = MealSvc.All();
+        State.OnChange += OnStateChanged;
+    }
+
+    private void OnStateChanged()
+    {
+        _all = MealSvc.All();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private static string Monogram(string name)
+    {
+        var words = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return string.Concat(words.Take(2).Select(w => char.ToUpperInvariant(w[0])));
+    }
+
+    public void Dispose() => State.OnChange -= OnStateChanged;
+}

@@ -1,3 +1,6 @@
 @page "/"
+@inject NavigationManager Navigation
 
-<PageTitle>Meal Planner</PageTitle>
+@code {
+    protected override void OnInitialized() => Navigation.NavigateTo("/meals", replace: true);
+}

@@ -1,0 +1,293 @@
+@page "/meals/new"
+@page "/meals/{Id:guid}"
+@inject AppState State
+@inject MealService Meals
+@inject IngredientService Ingredients
+@inject NavigationManager Nav
+
+<PageTitle>@(IsNew ? "New meal" : "Edit meal")</PageTitle>
+
+<NavHeader BackLabel="Meals" BackHref="/meals" Title="@(IsNew ? "New meal" : "Edit meal")" OnBack="BackAsync">
+    <RightContent>
+        <PrimaryButton Pill="true" Disabled="@(!CanSave)" OnClick="SaveAsync">Save</PrimaryButton>
+    </RightContent>
+</NavHeader>
+
+<div class="content">
+    <Card>
+        <div class="name-field">
+            <TextField Label="Name" Value="@_name" ValueChanged="OnNameChanged" MaxLength="@Validation.MealNameMax"
+                       Error="@(_nameTouched ? Meals.ValidateName(_name, Id) : null)" />
+        </div>
+    </Card>
+
+    <div class="section-head">
+        <h2 class="t-section-title">Ingredients <span class="count">@_rows.Count</span></h2>
+        <PrimaryButton Pill="true" Variant="ButtonVariant.Secondary" OnClick="OpenPicker"><PlusIcon Size="18" /> Add</PrimaryButton>
+    </div>
+
+    @if (_rows.Count == 0)
+    {
+        <p class="none t-secondary">No ingredients yet. Tap Add.</p>
+    }
+    else
+    {
+        <RowGroup>
+            @foreach (var row in _rows)
+            {
+                var r = row;
+                var ing = State.Ingredient(r.IngredientId);
+                if (ing is null) { continue; }
+                var error = Validation.Quantity(r.Text);
+                <div class="ing-row">
+                    <div class="line">
+                        <div class="who">
+                            <span class="ing-name">@ing.Name</span>
+                            <span class="market">@MarketName(ing)</span>
+                        </div>
+                        @if (ing.IsStaple)
+                        {
+                            <Badge Variant="BadgeVariant.Staple">Staple</Badge>
+                        }
+                        <input @ref="r.Ref" class="qty @(error is null ? null : "invalid")" type="text" inputmode="decimal"
+                               placeholder="–" autocomplete="off" value="@r.Text"
+                               aria-label="@(ing.Name) quantity" aria-invalid="@(error is null ? null : "true")"
+                               aria-describedby="@(error is null ? null : r.ErrorId)"
+                               @oninput="e => r.Text = e.Value?.ToString() ?? string.Empty" />
+                        <span class="unit" aria-hidden="true">@ing.Unit</span>
+                        <button type="button" class="remove" aria-label="Remove @ing.Name" @onclick="() => Remove(r)">
+                            <MinusCircleIcon Size="24" />
+                        </button>
+                    </div>
+                    <FieldError Id="@r.ErrorId" Message="@error" />
+                </div>
+            }
+        </RowGroup>
+    }
+
+    @if (!_showNotes)
+    {
+        <button type="button" class="add-notes" @onclick="ShowNotes"><NoteIcon Size="20" /> Add notes</button>
+    }
+    else
+    {
+        <div class="notes">
+            <label for="@_notesId" class="t-section-label">Notes</label>
+            <textarea @ref="_notesRef" id="@_notesId" rows="3" value="@_notes" autocomplete="off"
+                      aria-invalid="@(Validation.Notes(_notes) is null ? null : "true")"
+                      aria-describedby="@(Validation.Notes(_notes) is null ? null : _notesErrId)"
+                      @oninput="e => _notes = e.Value?.ToString() ?? string.Empty"></textarea>
+            <FieldError Id="@_notesErrId" Message="@Validation.Notes(_notes)" />
+        </div>
+    }
+
+    @if (!IsNew)
+    {
+        <div class="delete">
+            <PrimaryButton Variant="ButtonVariant.Danger" OnClick="() => _confirmDelete = true">Delete meal</PrimaryButton>
+        </div>
+    }
+</div>
+
+<IngredientPicker Open="_pickerOpen" ExcludedIds="ExcludedIds" OnPick="PickAsync" OnCancel="ClosePicker" OnCreate="CreateAsync" />
+<IngredientSheet Open="_sheetOpen" IngredientId="@null" InitialName="@_newName" OnClose="SheetClosed" />
+
+<ConfirmDialog Open="_confirmDiscard" Title="Discard changes?" ConfirmText="Discard" CancelText="Keep editing"
+               Destructive="true" OnConfirm="Discard" OnCancel="() => _confirmDiscard = false" />
+
+<ConfirmDialog Open="_confirmDelete" Title="@($"Delete {_name.Trim()}?")" Message="@DeleteMessage" ConfirmText="Delete"
+               Destructive="true" OnConfirm="DeleteAsync" OnCancel="() => _confirmDelete = false" />
+
+@code {
+    private sealed class Row(Guid ingredientId, string text)
+    {
+        public Guid IngredientId { get; } = ingredientId;
+        public string Text { get; set; } = text;
+        public ElementReference Ref;
+        public string ErrorId { get; } = ElementIds.New("qty-err");
+    }
+
+    private readonly string _notesId = ElementIds.New("notes");
+    private readonly string _notesErrId = ElementIds.New("notes-err");
+    private readonly List<Row> _rows = [];
+    private string _name = "";
+    private string _notes = "";
+    private string _baseline = "";
+    private bool _nameTouched, _showNotes, _pickerOpen, _sheetOpen, _confirmDiscard, _confirmDelete, _saving;
+    private bool _focusNotes;
+    private Row? _focusRow;
+    private string _newName = "";
+    private Guid? _loadedFor;
+    private bool _loaded;
+    private ElementReference _notesRef;
+
+    [Parameter] public Guid? Id { get; set; }
+
+    private bool IsNew => Id is null;
+    private IReadOnlyCollection<Guid> ExcludedIds => _rows.Select(r => r.IngredientId).ToList();
+
+    private string Signature() =>
+        _name.Trim() + "\n" + (string.IsNullOrWhiteSpace(_notes) ? "" : _notes) + "\n" +
+        string.Join("|", _rows.Select(r => r.IngredientId + ":" + r.Text.Trim()));
+
+    private bool Dirty => _loaded && Signature() != _baseline;
+
+    private MealDraft? BuildDraft()
+    {
+        var list = new List<MealIngredient>();
+        foreach (var r in _rows)
+        {
+            if (!QuantityFormat.TryParse(r.Text, out var q)) return null;
+            list.Add(new MealIngredient(r.IngredientId, q));
+        }
+        return new MealDraft(Id, _name, string.IsNullOrWhiteSpace(_notes) ? null : _notes, list);
+    }
+
+    private bool CanSave
+    {
+        get
+        {
+            if (_saving || !Dirty) return false;
+            var draft = BuildDraft();
+            return draft is not null && Meals.Validate(draft) is null;
+        }
+    }
+
+    private string DeleteMessage
+    {
+        get
+        {
+            if (Id is not { } id) return "";
+            int n = Meals.PlannedWeeksFromNow(id).Count;
+            return n > 0
+                ? $"It's planned in {n} {(n == 1 ? "week" : "weeks")}; it will be removed from those plans."
+                : "This can't be undone.";
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_loaded && _loadedFor == Id) return;
+        _loadedFor = Id;
+        _rows.Clear();
+        if (Id is { } id)
+        {
+            if (State.Meal(id) is not { } meal)
+            {
+                Nav.NavigateTo("/meals", replace: true);
+                return;
+            }
+            _name = meal.Name;
+            _notes = meal.Notes ?? "";
+            foreach (var mi in meal.Ingredients)
+                _rows.Add(new Row(mi.IngredientId, QuantityFormat.Format(mi.Quantity, false, "")));
+        }
+        else
+        {
+            _name = "";
+            _notes = "";
+        }
+        _showNotes = !string.IsNullOrWhiteSpace(_notes);
+        _nameTouched = false;
+        _loaded = true;
+        _baseline = Signature();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusNotes)
+        {
+            _focusNotes = false;
+            await _notesRef.FocusAsync();
+        }
+        if (_focusRow is { } row)
+        {
+            _focusRow = null;
+            // Let the sheet's focus restore finish first so it does not steal focus back.
+            await Task.Delay(150);
+            try { await row.Ref.FocusAsync(); } catch (InvalidOperationException) { } catch (JSException) { }
+        }
+    }
+
+    private string MarketName(Ingredient i) =>
+        i.DefaultMarketId is { } id && State.Market(id) is { } m ? m.Name : "Anywhere";
+
+    private void OnNameChanged(string value)
+    {
+        _name = value;
+        _nameTouched = true;
+    }
+
+    private void OpenPicker() => _pickerOpen = true;
+    private void ClosePicker() => _pickerOpen = false;
+
+    private void AddRow(Guid ingredientId)
+    {
+        if (_rows.Any(r => r.IngredientId == ingredientId)) return;
+        var row = new Row(ingredientId, "");
+        _rows.Add(row);
+        _focusRow = row;
+    }
+
+    private void PickAsync(Guid ingredientId)
+    {
+        _pickerOpen = false;
+        AddRow(ingredientId);
+    }
+
+    private void CreateAsync(string name)
+    {
+        _newName = name;
+        _pickerOpen = false;
+        _sheetOpen = true;
+    }
+
+    private void SheetClosed(Ingredient? saved)
+    {
+        _sheetOpen = false;
+        if (saved is not null) AddRow(saved.Id);
+    }
+
+    private void Remove(Row row) => _rows.Remove(row);
+
+    private void ShowNotes()
+    {
+        _showNotes = true;
+        _focusNotes = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        var draft = BuildDraft();
+        if (draft is null || !CanSave) return;
+        _saving = true;
+        try
+        {
+            await Meals.SaveMeal(draft);
+            Nav.NavigateTo("/meals");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void BackAsync()
+    {
+        if (Dirty) _confirmDiscard = true;
+        else Nav.NavigateTo("/meals");
+    }
+
+    private void Discard()
+    {
+        _confirmDiscard = false;
+        Nav.NavigateTo("/meals");
+    }
+
+    private async Task DeleteAsync()
+    {
+        _confirmDelete = false;
+        if (Id is { } id) await Meals.DeleteMeal(id);
+        Nav.NavigateTo("/meals");
+    }
+}

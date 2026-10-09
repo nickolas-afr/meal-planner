@@ -1,0 +1,26 @@
+<div class="field">
+    <label for="@_id">@Label</label>
+    <div class="wrap">
+        <select id="@_id" value="@Value" disabled="@Disabled" @onchange="OnChange">
+            @foreach (var o in Options)
+            {
+                <option value="@o.Value" selected="@(o.Value == Value)">@o.Text</option>
+            }
+        </select>
+        <ChevronDownIcon Size="18" Class="chev" />
+    </div>
+</div>
+
+@code {
+    private string _generated = ElementIds.New("pk");
+    private string _id => Id ?? _generated;
+
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public IReadOnlyList<PickerOption> Options { get; set; } = Array.Empty<PickerOption>();
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string? Id { get; set; }
+
+    private Task OnChange(ChangeEventArgs e) => ValueChanged.InvokeAsync(e.Value?.ToString() ?? "");
+}

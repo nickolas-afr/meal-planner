@@ -1,0 +1,37 @@
+@implements IDisposable
+@inject NavigationManager Nav
+
+<nav class="tabbar" aria-label="Main">
+    @foreach (var tab in Tabs)
+    {
+        var active = IsActive(tab.Href);
+        <a href="@tab.Href" class="tab @(active ? "active" : null)" aria-current="@(active ? "page" : null)">
+            @tab.Icon
+            <span>@tab.Label</span>
+        </a>
+    }
+</nav>
+
+@code {
+    private record Tab(string Href, string Label, RenderFragment Icon);
+
+    private Tab[] Tabs { get; } =
+    [
+        new("/meals", "Meals", b => { b.OpenComponent<BowlIcon>(0); b.CloseComponent(); }),
+        new("/ingredients", "Ingredients", b => { b.OpenComponent<LeafIcon>(0); b.CloseComponent(); }),
+        new("/plan", "Plan", b => { b.OpenComponent<CalendarIcon>(0); b.CloseComponent(); }),
+        new("/shopping", "Shopping", b => { b.OpenComponent<BagIcon>(0); b.CloseComponent(); }),
+    ];
+
+    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => InvokeAsync(StateHasChanged);
+
+    private bool IsActive(string href)
+    {
+        var path = "/" + Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].TrimEnd('/');
+        return path == href || path.StartsWith(href + "/", StringComparison.Ordinal);
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}

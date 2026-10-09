@@ -1,0 +1,23 @@
+<header class="nav">
+    <div class="back">
+        @if (OnBack.HasDelegate)
+        {
+            <button type="button" class="back-link" @onclick="OnBack"><ChevronLeftIcon Size="22" /><span>@BackLabel</span></button>
+        }
+        else
+        {
+            <a class="back-link" href="@BackHref"><ChevronLeftIcon Size="22" /><span>@BackLabel</span></a>
+        }
+    </div>
+    <h1 class="t-nav-title title">@Title</h1>
+    <div class="right">@RightContent</div>
+</header>
+
+@code {
+    [Parameter] public string BackHref { get; set; } = "/";
+    [Parameter] public string BackLabel { get; set; } = "Back";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? RightContent { get; set; }
+    /// <summary>When set, the back control is a button that calls this instead of navigating.</summary>
+    [Parameter] public EventCallback OnBack { get; set; }
+}

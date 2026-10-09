@@ -1,0 +1,23 @@
+@if (Href is not null)
+{
+    <a href="@Href" class="@CssClass" @attributes="Attributes">@ChildContent</a>
+}
+else
+{
+    <button type="@Type" class="@CssClass" disabled="@Disabled" @onclick="OnClick" @attributes="Attributes">@ChildContent</button>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    /// <summary>Pill (radius 22, 44 px tall) instead of full width (radius 16).</summary>
+    [Parameter] public bool Pill { get; set; }
+    [Parameter] public ButtonVariant Variant { get; set; } = ButtonVariant.Primary;
+    [Parameter] public string Type { get; set; } = "button";
+    /// <summary>When set, renders a link styled as the button instead of a button.</summary>
+    [Parameter] public string? Href { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? Attributes { get; set; }
+
+    private string CssClass => $"btn {(Pill ? "pill" : "block")} {Variant.ToString().ToLowerInvariant()}{(Disabled ? " is-disabled" : "")}";
+}

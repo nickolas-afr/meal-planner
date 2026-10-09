@@ -1,0 +1,23 @@
+.field { display: flex; flex-direction: column; }
+
+label {
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-2);
+}
+
+input {
+    height: 46px;
+    padding: 0 14px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-input);
+    color: var(--text);
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+input::placeholder { color: var(--text-3); }
+input.invalid { border-color: var(--danger); }
+input:disabled { opacity: 0.6; }

@@ -1,0 +1,71 @@
+/* Design tokens. Values from docs/ui.md (Design tokens, Shape and spacing). Components use only these variables. */
+
+:root {
+    color-scheme: light;
+
+    --bg: #F5F4EF;
+    --surface: #FFFFFF;
+    --surface-2: #F2F1EC;
+    --track: #E9E7E0;
+    --border: #E7E5DE;
+    --divider: #EFEDE6;
+    --input-bg: #FBFAF7;
+    --input-border: #D9D6CC;
+    --text: #1C1E1B;
+    --text-2: #60645D;
+    --text-3: #6A6E66;
+    --icon-muted: #9A9D95;
+    --accent: #2E7A4B;
+    --accent-pressed: #1F5A36;
+    --on-accent: #FFFFFF;
+    --accent-tint: #E3EFE6;
+    --on-accent-tint: #1F5A36;
+    --staple-bg: #F3EAD3;
+    --staple-text: #5B4A1E;
+    --danger: #B42318;
+    --checkbox: #B9BCB3;
+    --checked-text: #7C8078;
+    --chrome: rgba(255, 255, 255, 0.94);
+    --scrim: rgba(28, 30, 27, 0.38);
+
+    --font: "Figtree", system-ui, sans-serif;
+    --radius-card: 16px;
+    --radius-meal: 18px;
+    --radius-sheet: 26px;
+    --radius-input: 12px;
+    --radius-pill: 22px;
+    --page-x: 20px;
+    --tabbar-h: 56px;
+    --shadow-sheet: 0 -8px 30px rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        color-scheme: dark;
+
+        --bg: #121412;
+        --surface: #1B1E1B;
+        --surface-2: #242824;
+        --track: #242824;
+        --border: #2C312C;
+        --divider: #262A26;
+        --input-bg: #161916;
+        --input-border: #3A403A;
+        --text: #ECEDE8;
+        --text-2: #A6AAA1;
+        --text-3: #8E928A;
+        --icon-muted: #6F746D;
+        --accent: #5DB483;
+        --accent-pressed: #7CC79C;
+        --on-accent: #0D1A12;
+        --accent-tint: #1D3326;
+        --on-accent-tint: #A9DDBD;
+        --staple-bg: #3A3120;
+        --staple-text: #EAD7A4;
+        --danger: #F08070;
+        --checkbox: #5A605A;
+        --checked-text: #7E837C;
+        --chrome: rgba(27, 30, 27, 0.94);
+        --scrim: rgba(0, 0, 0, 0.55);
+    }
+}

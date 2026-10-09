@@ -1,0 +1,21 @@
+.content { padding: 0 var(--page-x) 24px; }
+.group { margin-top: 20px; }
+.group .t-section-label { margin: 0 0 8px 4px; }
+.none { margin-top: 24px; text-align: center; }
+
+.row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 48px;
+    padding: 8px 16px;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    color: var(--text);
+}
+.name { font-size: 16px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.unit { color: var(--text-2); font-size: 15px; }

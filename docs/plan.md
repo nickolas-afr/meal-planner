@@ -46,14 +46,14 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
 
 ## M2 · Local app: meals, ingredients, markets
 
-- [ ] `wwwroot/css/tokens.css` (both themes), `app.css` (reset, global rules from ui.md), self-hosted Figtree `@font-face`.
-- [ ] Icon components (ui.md › Icons).
-- [ ] Shared components: `AppShell`, `TabBar`, `LargeTitleHeader`, `NavHeader`, `SearchField`, `RowGroup`, `Badge`, `BottomSheet`, `ActionSheet`, `ConfirmDialog`, `EmptyState`, `PrimaryButton`, `Toggle`, `Picker`, `FieldError`.
-- [ ] Storage: `IStore`, `LocalStorageStore`, `AppData` with `SchemaVersion = 1`.
-- [ ] `AppState`, `Clock`, `PreferencesService`.
-- [ ] `MealService`, `IngredientService`, `MarketService`, following the mutation steps in architecture.md › State and services. The outbox is filled even though nothing sends it yet.
-- [ ] App config `Features:RequireAuth` (default `false` until M5). When false, `NavGuard` lets everything through and `SyncService` is not registered.
-- [ ] Pages: Meals, Meal editor (with ingredient picker and inline create), Ingredients (with the ingredient sheet), and Settings › Markets only.
+- [x] `wwwroot/css/tokens.css` (both themes), `app.css` (reset, global rules from ui.md), self-hosted Figtree `@font-face`.
+- [x] Icon components (ui.md › Icons).
+- [x] Shared components: `AppShell`, `TabBar`, `LargeTitleHeader`, `NavHeader`, `SearchField`, `RowGroup`, `Badge`, `BottomSheet`, `ActionSheet`, `ConfirmDialog`, `EmptyState`, `PrimaryButton`, `Toggle`, `Picker`, `FieldError`.
+- [x] Storage: `IStore`, `LocalStorageStore`, `AppData` with `SchemaVersion = 1`.
+- [x] `AppState`, `Clock`, `PreferencesService`.
+- [x] `MealService`, `IngredientService`, `MarketService`, following the mutation steps in architecture.md › State and services. The outbox is filled even though nothing sends it yet.
+- [x] App config `Features:RequireAuth` (default `false` until M5). When false, `NavGuard` lets everything through and `SyncService` is not registered.
+- [x] Pages: Meals, Meal editor (with ingredient picker and inline create), Ingredients (with the ingredient sheet), and Settings › Markets only.
 
 **Done when:**
 

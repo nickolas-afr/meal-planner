@@ -1,0 +1,9 @@
+@using MealPlanner.App.Services
+@inject Features Features
+
+@* With RequireAuth off (until M5) every route is open. M5 adds the redirects from ui.md › Navigation. *@
+@ChildContent
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

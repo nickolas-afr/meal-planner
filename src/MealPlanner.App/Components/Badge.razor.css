@@ -1,0 +1,13 @@
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.planned, .count { background: var(--accent-tint); color: var(--on-accent-tint); }
+.staple { background: var(--staple-bg); color: var(--staple-text); }
+.neutral { background: var(--surface-2); color: var(--text-2); }

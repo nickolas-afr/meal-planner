@@ -1,0 +1,74 @@
+@inject IngredientService Ingredients
+@inject AppState State
+
+<BottomSheet Open="Open" Title="Add ingredient" OnCancel="OnCancel" ConfirmText="@null">
+    <div class="picker">
+        <SearchField @bind-Value="_query" Placeholder="Search ingredients" AutoFocus="true" />
+        <ul class="list">
+            @if (ShowCreate)
+            {
+                <li>
+                    <button type="button" class="row create" @onclick="() => OnCreate.InvokeAsync(_query.Trim())">
+                        <PlusIcon Size="20" />
+                        <span class="t-list-row">Create "@_query.Trim()"</span>
+                    </button>
+                </li>
+            }
+            @foreach (var i in Visible)
+            {
+                var ing = i;
+                <li>
+                    <button type="button" class="row" @onclick="() => OnPick.InvokeAsync(ing.Id)">
+                        <span class="main">
+                            <span class="t-list-row">@ing.Name</span>
+                            <span class="sub t-secondary">@(string.IsNullOrEmpty(ing.Unit) ? "No unit" : ing.Unit) · @MarketName(ing)</span>
+                        </span>
+                    </button>
+                </li>
+            }
+        </ul>
+        @if (!ShowCreate && Visible.Count == 0)
+        {
+            <p class="empty t-secondary">@(_query.Trim().Length > 0 ? $"No ingredients match \"{_query.Trim()}\"." : "Every ingredient is already in this meal.")</p>
+        }
+    </div>
+</BottomSheet>
+
+@code {
+    private string _query = "";
+
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public IReadOnlyCollection<Guid> ExcludedIds { get; set; } = [];
+    [Parameter] public EventCallback<Guid> OnPick { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<string> OnCreate { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (!Open) _query = "";
+    }
+
+    private IReadOnlyList<Ingredient> Visible
+    {
+        get
+        {
+            var q = _query.Trim();
+            return Ingredients.All()
+                .Where(i => !ExcludedIds.Contains(i.Id))
+                .Where(i => q.Length == 0 || i.Name.Contains(q, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
+
+    private bool ShowCreate
+    {
+        get
+        {
+            var q = _query.Trim();
+            return q.Length > 0 && !Ingredients.All().Any(i => string.Equals(i.Name.Trim(), q, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    private string MarketName(Ingredient i) =>
+        i.DefaultMarketId is { } id && State.Market(id) is { } m ? m.Name : "Anywhere";
+}

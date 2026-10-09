@@ -1,0 +1,24 @@
+<div class="search">
+    <SearchIcon Size="20" Class="icon" />
+    <input @ref="_input" type="search" value="@Value" placeholder="@Placeholder" aria-label="@(AriaLabel ?? Placeholder)"
+           autocomplete="off" autocapitalize="none" spellcheck="false" @oninput="OnInput" />
+</div>
+
+@code {
+    private ElementReference _input;
+
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Search";
+    [Parameter] public string? AriaLabel { get; set; }
+    [Parameter] public bool AutoFocus { get; set; }
+
+    public ValueTask FocusAsync() => _input.FocusAsync();
+
+    private Task OnInput(ChangeEventArgs e) => ValueChanged.InvokeAsync(e.Value?.ToString() ?? "");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && AutoFocus) await _input.FocusAsync();
+    }
+}

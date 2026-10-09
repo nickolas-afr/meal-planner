@@ -1,0 +1,135 @@
+@implements IDisposable
+@inject AppState State
+@inject IngredientService Ingredients
+@inject MarketService Markets
+
+<BottomSheet Open="Open && !_confirmDelete" Title="@(IngredientId is null ? "New ingredient" : "Edit ingredient")"
+             ConfirmText="Done" ConfirmDisabled="@(!IsValid)" OnConfirm="SaveAsync" OnCancel="Cancel">
+    <div class="form">
+        <TextField @bind-Value="_name" Label="Name" Placeholder="e.g. Olive oil" MaxLength="60"
+                   Error="@NameError" AutoFocus="@(IngredientId is null)" />
+
+        <div class="grid">
+            <div class="unit">
+                <Picker @bind-Value="_unit" Label="Unit" Options="_unitOptions" Disabled="@_locked" />
+                @if (_locked)
+                {
+                    <span class="lock" aria-hidden="true"><LockIcon Size="16" /></span>
+                }
+            </div>
+            <Picker @bind-Value="_market" Label="Market" Options="MarketOptions" />
+        </div>
+        @if (_locked)
+        {
+            <p class="note t-secondary">Unit is locked while @string.Join(", ", _usedBy) use this ingredient.</p>
+        }
+
+        <Toggle @bind-Value="_staple" Label="Pantry staple" Subtitle="Listed under &quot;Check you have&quot; instead" />
+
+        @if (IngredientId is not null)
+        {
+            <PrimaryButton Variant="ButtonVariant.Danger" Disabled="@_locked" OnClick="@(() => _confirmDelete = true)">
+                @(_locked ? $"Delete · used by {_usedBy.Count} {(_usedBy.Count == 1 ? "meal" : "meals")}" : "Delete")
+            </PrimaryButton>
+        }
+    </div>
+</BottomSheet>
+
+<ConfirmDialog Open="_confirmDelete" Title="@($"Delete {_name.Trim()}?")" ConfirmText="Delete" Destructive="true"
+               OnConfirm="DeleteAsync" OnCancel="@(() => _confirmDelete = false)" />
+
+@code {
+    private static readonly IReadOnlyList<PickerOption> _unitOptions =
+        Units.All.Select(u => new PickerOption(u, u == "" ? "None" : u)).ToList();
+
+    private bool _wasOpen;
+    private bool _confirmDelete;
+    private bool _touched;
+    private bool _locked;
+    private string _name = "";
+    private string _unit = "";
+    private string _market = "";
+    private bool _staple;
+    private IReadOnlyList<string> _usedBy = Array.Empty<string>();
+
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public Guid? IngredientId { get; set; }
+    [Parameter] public string? InitialName { get; set; }
+    /// <summary>The saved ingredient after Done; null after Cancel or Delete.</summary>
+    [Parameter] public EventCallback<Ingredient?> OnClose { get; set; }
+
+    private IReadOnlyList<PickerOption> MarketOptions =>
+        new[] { new PickerOption("", "Anywhere") }
+            .Concat(Markets.All().Select(m => new PickerOption(m.Id.ToString(), m.Name))).ToList();
+
+    private IngredientDraft Draft => new(IngredientId, _name, _unit,
+        Guid.TryParse(_market, out var m) ? m : null, _staple);
+
+    private bool IsValid => Ingredients.Validate(Draft) is null;
+
+    private string? NameError => _touched || !string.IsNullOrWhiteSpace(_name)
+        ? Ingredients.ValidateName(_name, IngredientId) : null;
+
+    protected override void OnInitialized() => State.OnChange += OnStateChanged;
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !_wasOpen) Reset();
+        _wasOpen = Open;
+    }
+
+    private void Reset()
+    {
+        _confirmDelete = false;
+        _touched = false;
+        var existing = IngredientId is { } id ? State.Ingredient(id) : null;
+        if (existing is not null)
+        {
+            _name = existing.Name;
+            _unit = existing.Unit;
+            _market = existing.DefaultMarketId is { } m && State.Market(m) is not null ? m.ToString() : "";
+            _staple = existing.IsStaple;
+            RefreshUsage(existing.Id);
+        }
+        else
+        {
+            _name = InitialName ?? "";
+            _unit = "";
+            _market = "";
+            _staple = false;
+            _locked = false;
+            _usedBy = Array.Empty<string>();
+        }
+    }
+
+    private void RefreshUsage(Guid id)
+    {
+        _usedBy = Ingredients.UsedBy(id).Select(x => x.Name).ToList();
+        _locked = _usedBy.Count > 0;
+    }
+
+    private void OnStateChanged()
+    {
+        if (Open && IngredientId is { } id) RefreshUsage(id);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SaveAsync()
+    {
+        _touched = true;
+        if (!IsValid) return;
+        var saved = await Ingredients.SaveIngredient(Draft);
+        await OnClose.InvokeAsync(saved);
+    }
+
+    private Task Cancel() => OnClose.InvokeAsync(null);
+
+    private async Task DeleteAsync()
+    {
+        _confirmDelete = false;
+        if (IngredientId is { } id) await Ingredients.DeleteIngredient(id);
+        await OnClose.InvokeAsync(null);
+    }
+
+    public void Dispose() => State.OnChange -= OnStateChanged;
+}

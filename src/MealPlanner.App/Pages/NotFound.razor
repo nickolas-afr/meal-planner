@@ -1,4 +1,11 @@
 @page "/not-found"
-@layout MainLayout
+@layout AppShell
 
 <PageTitle>Not found</PageTitle>
+
+<EmptyState Title="Page not found" Text="That page does not exist.">
+    <Icon><SearchIcon Size="28" /></Icon>
+    <ChildContent>
+        <PrimaryButton Href="/meals" Pill="true">Go to Meals</PrimaryButton>
+    </ChildContent>
+</EmptyState>

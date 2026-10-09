@@ -1,0 +1,45 @@
+@inherits TrapBase
+
+@if (Open)
+{
+    <div class="overlay">
+        <button type="button" class="scrim" aria-label="Close" tabindex="-1" @onclick="OnCancel"></button>
+        <div class="sheet" @ref="Root" role="dialog" aria-modal="true" aria-labelledby="@_titleId">
+            <div class="handle" aria-hidden="true"></div>
+            @if (ShowHeader)
+            {
+                <div class="header">
+                    <button type="button" class="cancel" @onclick="OnCancel">Cancel</button>
+                    <h2 id="@_titleId" class="title">@Title</h2>
+                    <div class="confirm-slot">
+                        @if (ConfirmText is not null)
+                        {
+                            <button type="button" class="confirm" disabled="@ConfirmDisabled" @onclick="OnConfirm">@ConfirmText</button>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <h2 id="@_titleId" class="visually-hidden">@Title</h2>
+            }
+            <div class="body">@ChildContent</div>
+        </div>
+    </div>
+}
+
+@code {
+    private readonly string _titleId = ElementIds.New("sheet-title");
+
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public EventCallback OnCancel { get; set; }
+    /// <summary>Text of the accent pill (e.g. "Done", "Save"); null hides it.</summary>
+    [Parameter] public string? ConfirmText { get; set; }
+    [Parameter] public bool ConfirmDisabled { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    /// <summary>False hides the Cancel / title / confirm row (used by ActionSheet); Title stays as the accessible name.</summary>
+    [Parameter] public bool ShowHeader { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override Task EscapeAsync() => OnCancel.InvokeAsync();
+}

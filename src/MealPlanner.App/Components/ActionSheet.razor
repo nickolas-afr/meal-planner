@@ -1,0 +1,30 @@
+<BottomSheet Open="Open" Title="@(Title ?? "Choose an action")" ShowHeader="false" OnCancel="OnCancel">
+    <div class="actions">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <p class="heading" aria-hidden="true">@Title</p>
+        }
+        @for (var i = 0; i < Options.Count; i++)
+        {
+            var index = i;
+            var option = Options[i];
+            <button type="button" class="option @(option.Destructive ? "destructive" : null)" @onclick="() => OnSelect.InvokeAsync(index)">
+                <span>@option.Label</span>
+                @if (option.Checked)
+                {
+                    <CheckIcon Size="20" />
+                }
+            </button>
+        }
+        <button type="button" class="option cancel" @onclick="OnCancel">Cancel</button>
+    </div>
+</BottomSheet>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public IReadOnlyList<ActionSheetOption> Options { get; set; } = Array.Empty<ActionSheetOption>();
+    /// <summary>Index into Options.</summary>
+    [Parameter] public EventCallback<int> OnSelect { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+}

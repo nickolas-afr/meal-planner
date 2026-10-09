@@ -1,0 +1,36 @@
+@inherits TrapBase
+
+@if (Open)
+{
+    <div class="overlay">
+        <button type="button" class="scrim" aria-label="Close" tabindex="-1" @onclick="OnCancel"></button>
+        <div class="dialog" @ref="Root" role="alertdialog" aria-modal="true" aria-labelledby="@_titleId" aria-describedby="@_msgId">
+            <div class="content">
+                <h2 id="@_titleId" class="title">@Title</h2>
+                @if (!string.IsNullOrEmpty(Message))
+                {
+                    <p id="@_msgId" class="message">@Message</p>
+                }
+            </div>
+            <div class="buttons">
+                <button type="button" class="btn cancel" @onclick="OnCancel">@CancelText</button>
+                <button type="button" class="btn confirm @(Destructive ? "destructive" : null)" @onclick="OnConfirm">@ConfirmText</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private readonly string _titleId = ElementIds.New("dlg-title");
+    private readonly string _msgId = ElementIds.New("dlg-msg");
+
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public string ConfirmText { get; set; } = "OK";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public bool Destructive { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    protected override Task EscapeAsync() => OnCancel.InvokeAsync();
+}

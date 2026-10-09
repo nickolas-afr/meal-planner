@@ -1,0 +1,33 @@
+.actions { display: flex; flex-direction: column; padding-top: 4px; }
+
+.heading {
+    text-align: center;
+    padding: 4px 0 8px;
+    font-size: 13px;
+    color: var(--text-2);
+}
+
+.option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 48px;
+    padding: 0 8px;
+    border-top: 1px solid var(--divider);
+    font-size: 17px;
+    font-weight: 500;
+    text-align: left;
+    color: var(--text);
+}
+
+.option:first-of-type { border-top: 0; }
+.option.destructive { color: var(--danger); }
+.option ::deep svg, .option > :last-child:not(span:only-child) { color: var(--accent); }
+
+.option.cancel {
+    justify-content: center;
+    margin-top: 8px;
+    border-top: 1px solid var(--divider);
+    color: var(--accent);
+    font-weight: 700;
+}

@@ -1,0 +1,15 @@
+.header {
+    padding: calc(env(safe-area-inset-top) + 14px) var(--page-x) 8px;
+}
+
+.actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+    margin-bottom: 8px;
+}
+
+.left, .right { display: flex; align-items: center; gap: 8px; }
+
+.subtitle { margin-top: 4px; }

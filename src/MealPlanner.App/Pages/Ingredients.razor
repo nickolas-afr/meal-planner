@@ -1,0 +1,101 @@
+@page "/ingredients"
+@implements IDisposable
+@inject AppState State
+@inject IngredientService IngredientSvc
+@inject MarketService MarketSvc
+
+<PageTitle>Ingredients</PageTitle>
+
+<LargeTitleHeader Title="Ingredients">
+    <RightContent>
+        <PrimaryButton Pill="true" OnClick="@(() => OpenSheet(null))"><PlusIcon Size="18" /> New</PrimaryButton>
+    </RightContent>
+</LargeTitleHeader>
+
+<div class="content">
+    @if (_all.Count == 0)
+    {
+        <EmptyState Title="No ingredients yet" Text="They're also added from a meal.">
+            <Icon><LeafIcon Size="28" /></Icon>
+            <ChildContent>
+                <PrimaryButton Pill="true" OnClick="@(() => OpenSheet(null))">New ingredient</PrimaryButton>
+            </ChildContent>
+        </EmptyState>
+    }
+    else
+    {
+        <SearchField @bind-Value="_query" Placeholder="Search ingredients" AriaLabel="Search ingredients" />
+
+        @if (_groups.Count == 0)
+        {
+            <p class="none t-secondary">No ingredients match "@_query".</p>
+        }
+        @foreach (var group in _groups)
+        {
+            <section class="group">
+                <h2 class="t-section-label">@group.Name</h2>
+                <RowGroup>
+                    @foreach (var i in group.Items)
+                    {
+                        <button type="button" class="row" @key="i.Id" @onclick="() => OpenSheet(i.Id)">
+                            <span class="name">@i.Name</span>
+                            <span class="meta">
+                                @if (i.IsStaple)
+                                {
+                                    <Badge Variant="BadgeVariant.Staple">Staple</Badge>
+                                }
+                                @if (i.Unit != "")
+                                {
+                                    <span class="unit">@i.Unit</span>
+                                }
+                            </span>
+                        </button>
+                    }
+                </RowGroup>
+            </section>
+        }
+    }
+</div>
+
+<IngredientSheet Open="_sheetOpen" IngredientId="_editingId" OnClose="CloseSheet" />
+
+@code {
+    private string _query = "";
+    private bool _sheetOpen;
+    private Guid? _editingId;
+
+    private record Group(string Name, List<Ingredient> Items);
+
+    private IReadOnlyList<Ingredient> _all => IngredientSvc.All();
+
+    private List<Group> _groups
+    {
+        get
+        {
+            var q = _query.Trim();
+            var items = _all.Where(i => q.Length == 0 || i.Name.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+            var markets = MarketSvc.All();
+            var ids = markets.Select(m => m.Id).ToHashSet();
+            var groups = new List<Group>
+            {
+                new("Anywhere", items.Where(i => i.DefaultMarketId is not { } m || !ids.Contains(m)).ToList())
+            };
+            groups.AddRange(markets.Select(m => new Group(m.Name, items.Where(i => i.DefaultMarketId == m.Id).ToList())));
+            return groups.Where(g => g.Items.Count > 0).ToList();
+        }
+    }
+
+    protected override void OnInitialized() => State.OnChange += OnStateChanged;
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    private void OpenSheet(Guid? id)
+    {
+        _editingId = id;
+        _sheetOpen = true;
+    }
+
+    private void CloseSheet(Ingredient? _) => _sheetOpen = false;
+
+    public void Dispose() => State.OnChange -= OnStateChanged;
+}

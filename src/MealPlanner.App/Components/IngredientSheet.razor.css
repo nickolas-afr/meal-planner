@@ -1,0 +1,5 @@
+.form { display: flex; flex-direction: column; gap: 16px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.unit { position: relative; }
+.lock { position: absolute; right: 36px; bottom: 15px; color: var(--icon-muted); pointer-events: none; display: flex; }
+.note { margin: -6px 0 0; }

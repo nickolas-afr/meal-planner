@@ -1,0 +1,10 @@
+@if (!string.IsNullOrEmpty(Message))
+{
+    <p id="@Id" class="error" role="alert">@Message</p>
+}
+
+@code {
+    /// <summary>Point the input's aria-describedby at this id.</summary>
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public string? Message { get; set; }
+}

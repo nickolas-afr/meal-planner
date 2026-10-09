@@ -1,14 +1,202 @@
-/* Placeholder until M2 adds tokens.css and the global rules from docs/ui.md. */
-html, body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+/* Global styles only. Component styles live in their own .razor.css files. Colours come from tokens.css. */
+
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("../fonts/figtree-400.woff2") format("woff2");
 }
 
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url("../fonts/figtree-500.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("../fonts/figtree-600.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("../fonts/figtree-700.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Figtree";
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src: url("../fonts/figtree-800.woff2") format("woff2");
+}
+
+/* Reset */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
+body,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+ol,
+figure,
+blockquote,
+dl,
+dd {
+    margin: 0;
+}
+
+img,
+svg,
+picture,
+video,
+canvas {
+    display: block;
+    max-width: 100%;
+}
+
+input,
+button,
+textarea,
+select {
+    font: inherit;
+    color: inherit;
+}
+
+button {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    color: inherit;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+label {
+    touch-action: manipulation;
+}
+
+/* Base */
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+}
+
+input,
+textarea,
+select {
+    font-size: 16px;
+}
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* Utilities */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Type styles (ui.md, Type) */
+.t-large-title {
+    font-size: 34px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+.t-nav-title {
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.t-section-title {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+.t-section-label {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-3);
+}
+
+.t-row-title {
+    font-size: 17px;
+    font-weight: 600;
+}
+
+.t-list-row {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.t-secondary {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-2);
+}
+
+/* Blazor error UI */
 #blazor-error-ui {
     display: none;
     position: fixed;
     inset: auto 0 0 0;
     padding: 0.6rem 1.25rem;
+    background: var(--surface);
+    color: var(--text);
+    border-top: 1px solid var(--border);
+    z-index: 1000;
 }
 
 #blazor-error-ui .dismiss {
@@ -16,4 +204,14 @@ html, body {
     position: absolute;
     right: 0.75rem;
     top: 0.5rem;
+}
+
+.blazor-error-boundary {
+    background: var(--danger);
+    color: var(--on-accent);
+    padding: 1rem;
+}
+
+.blazor-error-boundary::after {
+    content: "An error has occurred.";
 }

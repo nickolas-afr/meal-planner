@@ -1,0 +1,62 @@
+.content { padding: 0 var(--page-x) 32px; }
+section { margin-top: 20px; }
+section .t-section-label { margin: 0 0 8px 4px; }
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+}
+
+.mrow {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    border-bottom: 1px solid var(--divider);
+}
+.mname {
+    flex: 1;
+    min-height: 48px;
+    padding: 8px 16px;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+}
+.drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    min-height: 48px;
+    color: var(--icon-muted);
+    touch-action: none;
+    cursor: grab;
+}
+
+.add { padding: 6px 8px 6px 16px; }
+.addfield { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.addfield input {
+    flex: 1;
+    min-width: 0;
+    height: 44px;
+    background: transparent;
+    border: 0;
+    color: var(--text);
+}
+.addfield input[aria-invalid="true"] { color: var(--danger); }
+.addbtn {
+    min-height: 44px;
+    padding: 0 14px;
+    background: transparent;
+    border: 0;
+    color: var(--accent);
+    font-weight: 700;
+}
+.addbtn:disabled { opacity: 0.4; }
+
+.note { margin: 8px 4px 0; }
+.sheet-form { display: flex; flex-direction: column; gap: 16px; }
