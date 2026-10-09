@@ -22,13 +22,13 @@ Write down these values as you go; later steps need them:
 ## 1. Resource group
 
 1. In the [Azure portal](https://portal.azure.com), search for **Resource groups** and choose **Create**.
-2. Name it `mealplanner` and pick a region near you, e.g. **West Europe**. Use the same region for everything below.
+2. Name it `mealplanner` and pick a region near you, e.g. **West Europe**. The resource group's region is only where its metadata lives; the resources below can be in other regions.
 3. **Review + create**, then **Create**.
 
 ## 2. Static Web App (the PWA)
 
 1. Search for **Static Web Apps** and choose **Create**.
-2. Resource group `mealplanner`, name `mealplanner`, plan type **Free**.
+2. Resource group `mealplanner`, name `mealplanner`, plan type **Free**. The Free plan only offers a few regions (e.g. **East US 2**); any of them is fine, because the files are served from a global edge network.
 3. **Deployment details → Source: Other.** GitHub Actions deploys the app; the portal must not create a workflow of its own.
 4. **Review + create**, then **Create**, then **Go to resource**.
 5. On **Overview**, copy the **URL**. The hostname without `https://` is your **PWA hostname**.
@@ -41,7 +41,7 @@ Keep the default hostname. A custom domain added later would invalidate every pa
 
 1. Search for **App Services** and choose **Create → Web App**.
 2. Resource group `mealplanner`. Pick a globally unique name, e.g. `mealplanner-api-<yourname>`: this is your **Web App name**.
-3. Publish **Code**, runtime stack **.NET 10 (LTS)**, operating system **Linux**, the same region.
+3. Publish **Code**, runtime stack **.NET 10 (LTS)**, operating system **Linux**, and a region near you (e.g. **West Europe**). This is the part that runs code and holds the data, so nearby keeps syncs quick.
 4. **Pricing plan:** create a new Linux plan and pick **Free F1**.
 5. Leave the other tabs at their defaults (no database, no Application Insights is fine). **Review + create**, then **Create**, then **Go to resource**.
 6. On **Overview**, copy the **Default domain**: that is your **Web App default domain**.
