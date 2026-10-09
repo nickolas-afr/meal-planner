@@ -137,6 +137,7 @@ Meal Planner keeps a household's library of meals, lets either person pick the m
 | Ingredient name | Required, 1–60 characters after trimming, unique among non-deleted ingredients (case-insensitive). |
 | Market name | Required, 1–40 characters, unique (case-insensitive). |
 | Quantity | Blank, or a number > 0 and ≤ 100000 with at most 2 decimals. Accepts "," or "." as the decimal separator. |
+| Shopping item name (manual items) | Required, 1–60 characters after trimming. Not unique. |
 | Notes | Up to 2000 characters. |
 | Display name | Required, 1–30 characters. |
 | Invite code | 8 characters, case-insensitive, ignores spaces and dashes. |

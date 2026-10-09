@@ -133,6 +133,7 @@ Lists are `IReadOnlyList<T>`; services replace them whole (`meal with { Ingredie
 ### Helpers in Core
 
 - `Units.All`: `["", "g", "kg", "ml", "l", "pc", "clove", "tsp", "tbsp", "cup", "tin", "pack", "bunch", "slice"]`.
+- `Weeks.Name(week, localNow)` ("This week", "Next week", "Last week", "Week of Oct 26"), `Weeks.RangeLabel(week)` ("Mon Oct 12 – Sun Oct 18"), and `Weeks.PlanMin/PlanMax(localNow)`: the Plan range, 2 weeks before to 4 weeks after the current week (not the active week). Labels are English and culture-independent.
 - `Weeks.StartOf(DateOnly d)`: the Monday on or before `d`. `Weeks.Active(DateTime localNow)`: `StartOf(today)` Monday to Thursday, the next Monday Friday to Sunday. `Weeks.RetentionCutoff(localNow)`: `StartOf(today).AddDays(-14)`.
 - `Ids.ForList(DateOnly weekStart)` and `Ids.ForItem(DateOnly weekStart, Guid ingredientId)`: name-based UUIDv5 (RFC 9562, SHA-1). Use a fixed namespace GUID defined once in `Ids.cs`, and the names `"list:{yyyy-MM-dd}"` and `"item:{yyyy-MM-dd}:{ingredientId:D}"`. Because both phones compute the same ids, lists created concurrently converge to one list.
 - `QuantityFormat.Format(decimal? q, bool hasUnspecified, string unit)`:
@@ -224,6 +225,8 @@ A pure function from (list items, markets, meals in plan order, view) to groups 
 | BackupService | `Export()`, `Preview(file)`, `Import(file)` |
 | PreferencesService | `ShoppingView` |
 | Clock | `UtcNow`, `LocalNow` (wrap `DateTime` so tests can fix time) |
+
+Reorder in By market saves `ItemOrder` as the dragged ingredient ids followed by the market's earlier `ItemOrder` ids that aren't on this week's list, so items from other weeks keep their relative order (`ShoppingService.SaveMarketOrder`).
 
 On startup and after each sync, `PlanService` prunes old weeks. Every `PlannedMeal`, `ShoppingList` and `ShoppingItem` with `WeekStart < Weeks.RetentionCutoff(now)` is soft-deleted through the normal path, so the deletion syncs. Both phones may do this; it is idempotent.
 

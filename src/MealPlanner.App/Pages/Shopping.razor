@@ -1,6 +1,437 @@
 @page "/shopping"
+@using System.Globalization
+@using MealPlanner.Core.Shopping
+@implements IAsyncDisposable
+@inject AppState State
+@inject ShoppingService ShoppingSvc
+@inject PlanService PlanSvc
+@inject MarketService MarketSvc
+@inject PreferencesService Prefs
+@inject Clock Clock
+@inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>Shopping</PageTitle>
-<LargeTitleHeader Title="Shopping" />
-@* M3 replaces this placeholder. *@
-<EmptyState Title="Coming soon"><Icon><BagIcon Size="28" /></Icon></EmptyState>
+
+@if (_state == ShoppingListState.OutOfDate)
+{
+    <Banner Variant="BannerVariant.OutOfDate" Text="Plan changed" ActionText="Update" OnAction="UpdateListAsync" />
+}
+
+<LargeTitleHeader Title="Shopping">
+    <RightContent>
+        @if (_list is not null)
+        {
+            <PrimaryButton Pill="true" OnClick="OpenAdd"><PlusIcon Size="18" /> Item</PrimaryButton>
+        }
+    </RightContent>
+</LargeTitleHeader>
+
+<div class="content">
+    @if (_list is null)
+    {
+        <EmptyState Title="@($"No list for {NameForEmpty}")" Text="Plan some meals, then create the list.">
+            <Icon><BagIcon Size="28" /></Icon>
+            <ChildContent>
+                <PrimaryButton Pill="true" Href="@($"/plan?week={WeekText}")">Go to Plan</PrimaryButton>
+            </ChildContent>
+        </EmptyState>
+    }
+    else
+    {
+        <div class="weekrow">
+            <button type="button" class="weekbtn" @onclick="() => _weekSheet = true">
+                @WeekName · @_mealCount @(_mealCount == 1 ? "meal" : "meals")
+                <ChevronDownIcon Size="16" />
+            </button>
+            <span class="progress-text">@_bought of @_total bought</span>
+        </div>
+        <div class="bar" role="progressbar" aria-label="Shopping progress" aria-valuemin="0" aria-valuemax="@_total" aria-valuenow="@_bought">
+            <div class="fill" style="width: @(_total == 0 ? 0 : _bought * 100 / _total)%"></div>
+        </div>
+
+        <div class="seg">
+            <SegmentedControl TValue="ShoppingView" Options="_viewOptions" Value="Prefs.ShoppingView"
+                              ValueChanged="SetViewAsync" AriaLabel="Group shopping list" />
+        </div>
+
+        @if (_items.Count == 0)
+        {
+            <p class="none t-secondary">Nothing to buy.</p>
+        }
+        else
+        {
+            foreach (var g in _groups)
+            {
+                switch (g.Kind)
+                {
+                    case GroupKind.Meal:
+                        <section class="group">
+                            <div class="card">
+                                <div class="mealhead">
+                                    <h2 class="mealname">@g.Title</h2>
+                                    @if (g.Times > 1)
+                                    {
+                                        <Badge Variant="BadgeVariant.Count">×@g.Times</Badge>
+                                    }
+                                </div>
+                                <div class="rows">
+                                    @foreach (var r in g.Rows)
+                                    {
+                                        @RowView(g, r, r.MealNames.Count == 0 ? null : "Also in: " + string.Join(", ", r.MealNames), false)
+                                    }
+                                </div>
+                            </div>
+                        </section>
+                        break;
+                    case GroupKind.Extras:
+                        <section class="group">
+                            <div class="card">
+                                <div class="mealhead"><h2 class="mealname">@g.Title</h2></div>
+                                <div class="rows">
+                                    @foreach (var r in g.Rows)
+                                    {
+                                        @RowView(g, r, null, false)
+                                    }
+                                </div>
+                            </div>
+                        </section>
+                        break;
+                    case GroupKind.CheckYouHave:
+                        <section class="group">
+                            <button type="button" class="staples" aria-expanded="@(_staplesOpen ? "true" : "false")" @onclick="() => _staplesOpen = !_staplesOpen">
+                                <Badge Variant="BadgeVariant.Staple">Staple</Badge>
+                                <span class="stext">
+                                    <span class="stitle">Check you have</span>
+                                    <span class="ssub">@g.Rows.Count @(g.Rows.Count == 1 ? "staple" : "staples")</span>
+                                </span>
+                                <span class="chev @(_staplesOpen ? "open" : null)" aria-hidden="true"><ChevronDownIcon Size="20" /></span>
+                            </button>
+                            @if (_staplesOpen)
+                            {
+                                <div class="card staplecard">
+                                    <div class="rows">
+                                        @foreach (var r in g.Rows)
+                                        {
+                                            @RowView(g, r, MarketSubtitle(r), false)
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </section>
+                        break;
+                    default:
+                        var reordering = g.Kind == GroupKind.Market && _reorderMarket == g.Id;
+                        <section class="group">
+                            <div class="grouphead">
+                                <h2 class="t-section-label">@g.Title</h2>
+                                @if (g.Kind == GroupKind.Market)
+                                {
+                                    <button type="button" class="textbtn" aria-label="@((reordering ? "Done reordering " : "Reorder ") + g.Title)"
+                                            @onclick="() => ToggleReorderAsync(g)">@(reordering ? "Done" : "Reorder")</button>
+                                }
+                            </div>
+                            <div class="card">
+                                @if (reordering)
+                                {
+                                    <div class="rows" @ref="_sortEl" @key="_sortKey">
+                                        @foreach (var r in ReorderRows(g))
+                                        {
+                                            @RowView(g, r, MarketSubtitle(r), true)
+                                        }
+                                    </div>
+                                    <div class="rows">
+                                        @foreach (var r in g.Rows.Where(x => !IsDraggable(x)))
+                                        {
+                                            @RowView(g, r, MarketSubtitle(r), false)
+                                        }
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="rows">
+                                        @foreach (var r in g.Rows)
+                                        {
+                                            @RowView(g, r, MarketSubtitle(r), false)
+                                        }
+                                    </div>
+                                }
+                                @if (g.Rows.Count == 0)
+                                {
+                                    <p class="emptygroup t-secondary">Nothing here.</p>
+                                }
+                            </div>
+                        </section>
+                        break;
+                }
+            }
+        }
+    }
+</div>
+
+@code {
+    private RenderFragment RowView(ShoppingGroup g, ShoppingRow r, string? subtitle, bool handle) => __builder =>
+    {
+        var item = r.Item;
+        var ticked = item.CheckedAt is not null;
+        <CheckRow @key="@($"{g.Kind}-{g.Id}-{item.Id}-{ticked}")"
+                  Title="@item.Name" Subtitle="@subtitle"
+                  Quantity="@QuantityFormat.Format(r.Quantity, r.HasUnspecified, item.Unit)"
+                  Checked="ticked" Disabled="@(_reorderMarket is not null && g.Id == _reorderMarket)"
+                  ShowHandle="handle" DataId="@(handle ? item.IngredientId?.ToString() : null)" Animate="@(!handle)"
+                  OnToggle="() => ShoppingSvc.Toggle(item.Id)"
+                  OnMore="() => OpenMore(item)" MoreLabel="@($"More for {item.Name}")" />
+    };
+}
+
+<ActionSheet Open="_moreItem is not null && !_moveOpen" Title="@_moreItem?.Name" Options="_moreOptions"
+             OnSelect="OnMoreSelectAsync" OnCancel="CloseMore" />
+<ActionSheet Open="_moreItem is not null && _moveOpen" Title="Move to market" Options="_moveOptions"
+             OnSelect="OnMoveSelectAsync" OnCancel="CloseMore" />
+<ActionSheet Open="_weekSheet" Title="Shopping list" Options="_weekOptions" OnSelect="OnWeekSelect" OnCancel="@(() => _weekSheet = false)" />
+
+<ShoppingItemSheet Open="_sheetOpen" Item="_editItem" Week="_week" Markets="_markets"
+                   OnCancel="CloseSheet" OnSaved="CloseSheet" />
+
+@code {
+    private static readonly IReadOnlyList<SegmentOption<ShoppingView>> _viewOptions =
+    [
+        new(ShoppingView.ByMeal, "By meal"),
+        new(ShoppingView.ByMarket, "By market"),
+    ];
+
+    [SupplyParameterFromQuery(Name = "week")] public string? Week { get; set; }
+
+    private DateOnly _week;
+    private ShoppingList? _list;
+    private ShoppingListState _state;
+    private IReadOnlyList<ShoppingItem> _items = [];
+    private IReadOnlyList<ShoppingGroup> _groups = [];
+    private IReadOnlyList<Market> _markets = [];
+    private int _mealCount;
+    private int _bought;
+    private int _total;
+
+    private bool _staplesOpen;
+    private bool _weekSheet;
+    private bool _sheetOpen;
+    private ShoppingItem? _editItem;
+    private ShoppingItem? _moreItem;
+    private bool _moveOpen;
+    private IReadOnlyList<ActionSheetOption> _moreOptions = [];
+    private IReadOnlyList<ActionSheetOption> _moveOptions = [];
+    private IReadOnlyList<ActionSheetOption> _weekOptions = [];
+    private IReadOnlyList<DateOnly> _weeks = [];
+
+    // Reorder mode
+    private Guid? _reorderMarket;
+    private List<Guid>? _reorderIds;
+    private ElementReference _sortEl;
+    private Guid _sortKey = Guid.NewGuid();
+    private DotNetObjectReference<Shopping>? _self;
+    private int _sortableId;
+    private bool _needsInit;
+    private bool _disposed;
+
+    private string WeekText => _week.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    private string WeekName => Weeks.Name(_week, Clock.LocalNow);
+    private string NameForEmpty
+    {
+        get
+        {
+            var n = WeekName;
+            return n.StartsWith("This", StringComparison.Ordinal) || n.StartsWith("Next", StringComparison.Ordinal) || n.StartsWith("Last", StringComparison.Ordinal)
+                ? char.ToLowerInvariant(n[0]) + n[1..] : n;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        _self = DotNetObjectReference.Create(this);
+        State.OnChange += OnStateChanged;
+    }
+
+    protected override void OnParametersSet()
+    {
+        var week = DateOnly.TryParseExact(Week, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+            ? Weeks.StartOf(d) : PlanSvc.ActiveWeek;
+        if (week != _week)
+        {
+            _week = week;
+            _ = LeaveReorderAsync();
+            _moreItem = null;
+        }
+        Refresh();
+    }
+
+    private void OnStateChanged() => InvokeAsync(() => { Refresh(); StateHasChanged(); });
+
+    private void Refresh()
+    {
+        _list = ShoppingSvc.ListFor(_week);
+        _state = ShoppingSvc.GetState(_week);
+        _items = ShoppingSvc.Items(_week);
+        _markets = MarketSvc.All();
+        var meals = ShoppingSvc.MealsInPlanOrder(_week);
+        _mealCount = meals.Count;
+        (_bought, _total) = ShoppingListLayout.Progress(_items);
+        _groups = ShoppingListLayout.Build(Prefs.ShoppingView, _items, State.Data.Markets.Values, meals);
+        _weeks = ShoppingSvc.WeeksWithList();
+        _weekOptions = _weeks.Select(w => new ActionSheetOption(Weeks.Name(w, Clock.LocalNow), false, w == _week)).ToList();
+        if (_reorderMarket is { } rm && !_groups.Any(g => g.Kind == GroupKind.Market && g.Id == rm))
+        {
+            _reorderMarket = null;
+            _reorderIds = null;
+            _needsInit = false;
+            _ = DestroySortableAsync();
+        }
+    }
+
+    private string MarketSubtitle(ShoppingRow r)
+    {
+        if (r.Item.IngredientId is null)
+            return r.Item.MarketId is { } id && State.Data.Markets.GetValueOrDefault(id) is { IsDeleted: false } m ? m.Name : ShoppingListLayout.AnywhereTitle;
+        return string.Join(", ", r.MealNames);
+    }
+
+    private async Task SetViewAsync(ShoppingView v)
+    {
+        await LeaveReorderAsync();
+        await Prefs.SetShoppingViewAsync(v);
+        Refresh();
+    }
+
+    private Task UpdateListAsync() => ShoppingSvc.CreateOrUpdate(_week);
+
+    private void OnWeekSelect(int index)
+    {
+        _weekSheet = false;
+        var w = _weeks[index];
+        if (w != _week)
+            Nav.NavigateTo($"/shopping?week={w.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}");
+    }
+
+    // Add / edit sheet
+    private void OpenAdd() { _editItem = null; _sheetOpen = true; }
+    private void CloseSheet() { _sheetOpen = false; }
+
+    // "More" menus
+    private void OpenMore(ShoppingItem item)
+    {
+        _moreItem = item;
+        _moveOpen = false;
+        var opts = new List<ActionSheetOption> { new("Move to market…") };
+        if (item.IngredientId is null)
+        {
+            opts.Add(new("Edit"));
+            opts.Add(new("Delete", Destructive: true));
+        }
+        _moreOptions = opts;
+        var liveMarkets = _markets.ToList();
+        var move = new List<ActionSheetOption> { new("Anywhere", false, item.MarketId is null || liveMarkets.All(m => m.Id != item.MarketId)) };
+        move.AddRange(liveMarkets.Select(m => new ActionSheetOption(m.Name, false, item.MarketId == m.Id)));
+        _moveOptions = move;
+    }
+
+    private void CloseMore() { _moreItem = null; _moveOpen = false; }
+
+    private async Task OnMoreSelectAsync(int index)
+    {
+        if (_moreItem is not { } item) return;
+        switch (_moreOptions[index].Label)
+        {
+            case "Edit":
+                _editItem = item;
+                CloseMore();
+                _sheetOpen = true;
+                break;
+            case "Delete":
+                CloseMore();
+                await ShoppingSvc.DeleteManual(item.Id);
+                break;
+            default:
+                _moveOpen = true;
+                break;
+        }
+    }
+
+    private async Task OnMoveSelectAsync(int index)
+    {
+        if (_moreItem is not { } item) return;
+        Guid? marketId = index == 0 ? null : _markets[index - 1].Id;
+        CloseMore();
+        await ShoppingSvc.MoveToMarket(item.Id, marketId);
+    }
+
+    // Reorder mode
+    private static bool IsDraggable(ShoppingRow r) => r.Item.IngredientId is not null && r.Item.CheckedAt is null;
+
+    private IEnumerable<ShoppingRow> ReorderRows(ShoppingGroup g)
+    {
+        var rows = g.Rows.Where(IsDraggable).ToList();
+        if (_reorderIds is null) return rows;
+        return rows.OrderBy(r => { var i = _reorderIds.IndexOf(r.Item.IngredientId!.Value); return i < 0 ? int.MaxValue : i; });
+    }
+
+    private async Task ToggleReorderAsync(ShoppingGroup g)
+    {
+        if (_reorderMarket == g.Id)
+        {
+            var marketId = g.Id!.Value;
+            var ids = _reorderIds;
+            await LeaveReorderAsync();
+            if (ids is not null)
+                await ShoppingSvc.SaveMarketOrder(marketId, ids);
+            return;
+        }
+        await LeaveReorderAsync();
+        _reorderMarket = g.Id;
+        _reorderIds = null;
+        _sortKey = Guid.NewGuid();
+        _needsInit = true;
+    }
+
+    private async Task LeaveReorderAsync()
+    {
+        _reorderMarket = null;
+        _reorderIds = null;
+        _needsInit = false;
+        await DestroySortableAsync();
+    }
+
+    [JSInvokable]
+    public async Task OnReorder(string[] ids)
+    {
+        _reorderIds = ids.Select(s => Guid.TryParse(s, out var g) ? g : (Guid?)null)
+            .Where(g => g is not null).Select(g => g!.Value).ToList();
+        // Sortable moved DOM nodes Blazor owns: rebuild the container and re-init on that render.
+        await DestroySortableAsync();
+        _sortKey = Guid.NewGuid();
+        _needsInit = true;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_needsInit || _disposed || _reorderMarket is null) return;
+        _needsInit = false;
+        await DestroySortableAsync();
+        _sortableId = await JS.InvokeAsync<int>("mealPlanner.sortable.init", _sortEl, _self, ".drag-handle");
+    }
+
+    private async Task DestroySortableAsync()
+    {
+        if (_sortableId == 0) return;
+        var id = _sortableId;
+        _sortableId = 0;
+        try { await JS.InvokeVoidAsync("mealPlanner.sortable.destroy", id); } catch (JSDisconnectedException) { }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        State.OnChange -= OnStateChanged;
+        await DestroySortableAsync();
+        _self?.Dispose();
+    }
+}

@@ -63,10 +63,10 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
 
 ## M3 · Plan and shopping
 
-- [ ] `PlanService`, including pruning of old weeks.
-- [ ] `ShoppingService`: `GetState`, `CreateOrUpdate` (uses `Build` and `Merge`; the list id comes from `Ids.ForList`), `Toggle` (sets or clears `CheckedAt`), `MoveToMarket`, and manual item add, edit and delete.
-- [ ] Plan page: week switcher, range limits, read-only past weeks, stepper, add list, floating button with its three states.
-- [ ] Shopping page:
+- [x] `PlanService`, including pruning of old weeks.
+- [x] `ShoppingService`: `GetState`, `CreateOrUpdate` (uses `Build` and `Merge`; the list id comes from `Ids.ForList`), `Toggle` (sets or clears `CheckedAt`), `MoveToMarket`, and manual item add, edit and delete.
+- [x] Plan page: week switcher, range limits, read-only past weeks, stepper, add list, floating button with its three states.
+- [x] Shopping page:
   - header with progress and week ActionSheet
   - out-of-date banner and Update
   - both views via `ShoppingListLayout`
@@ -74,8 +74,8 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
   - "⋯" sheet and Move to market
   - add and edit item sheet
   - empty states
-- [ ] Reorder mode in By market: `wwwroot/js/interop.js` wraps SortableJS with `init(element, dotnetRef)` and `destroy`, and reports the new order of `data-id`s to .NET.
-- [ ] Ticked rows animate to the bottom (respecting `prefers-reduced-motion`).
+- [x] Reorder mode in By market: `wwwroot/js/interop.js` wraps SortableJS with `init(element, dotnetRef)` and `destroy`, and reports the new order of `data-id`s to .NET.
+- [x] Ticked rows animate to the bottom (respecting `prefers-reduced-motion`).
 
 **Done when:** you can plan a week (including ×2), create the list, tick items in both views, move an item to another market for the week, reorder a market, change the plan, see the banner, update, and get the results spec.md › Shopping list describes.
 

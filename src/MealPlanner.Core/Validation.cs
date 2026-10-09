@@ -8,6 +8,7 @@ public static class Validation
     public const int MealNameMax = 80;
     public const int IngredientNameMax = 60;
     public const int MarketNameMax = 40;
+    public const int ItemNameMax = 60;
     public const int NotesMax = 2000;
     public const int DisplayNameMax = 30;
     public const int InviteCodeLength = 8;
@@ -25,6 +26,15 @@ public static class Validation
 
     public static string? MarketName(string? name, IEnumerable<Market> markets, Guid? editingId) =>
         Name(name, MarketNameMax, "A market", markets.Where(m => !m.IsDeleted && m.Id != editingId).Select(m => m.Name));
+
+    /// <summary>Manual shopping item name: required, no uniqueness rule.</summary>
+    public static string? ItemName(string? name)
+    {
+        string trimmed = (name ?? "").Trim();
+        if (trimmed.Length == 0)
+            return "Enter a name.";
+        return trimmed.Length > ItemNameMax ? $"Use at most {ItemNameMax} characters." : null;
+    }
 
     public static string? Quantity(string? input) =>
         QuantityFormat.TryParse(input, out _)

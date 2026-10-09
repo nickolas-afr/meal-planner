@@ -1,0 +1,52 @@
+@using MealPlanner.App.Components.Icons
+
+<div class="check-row @(Animate ? "animate" : null)" data-id="@DataId">
+    <div class="inner">
+        @if (ShowHandle)
+        {
+            <span class="drag-handle" aria-hidden="true"><DragHandleIcon Size="20" /></span>
+        }
+        <button type="button" role="checkbox" aria-checked="@(Checked ? "true" : "false")" class="toggle @(Checked ? "ticked" : null)" disabled="@Disabled" @onclick="OnToggle">
+            <span class="circle" aria-hidden="true">
+                @if (Checked)
+                {
+                    <CheckIcon Size="16" />
+                }
+            </span>
+            <span class="text">
+                <span class="title">@Title</span>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <span class="sub">@Subtitle</span>
+                }
+            </span>
+            @if (!string.IsNullOrEmpty(Quantity))
+            {
+                <span class="qty">@Quantity</span>
+            }
+        </button>
+        @if (OnMore.HasDelegate)
+        {
+            <button type="button" class="more" aria-label="@MoreLabel" @onclick="OnMore"><MoreIcon Size="22" /></button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string? Subtitle { get; set; }
+    /// <summary>Already formatted.</summary>
+    [Parameter] public string? Quantity { get; set; }
+    [Parameter] public bool Checked { get; set; }
+    [Parameter] public EventCallback OnToggle { get; set; }
+    /// <summary>When it has no delegate, the ⋯ button is hidden.</summary>
+    [Parameter] public EventCallback OnMore { get; set; }
+    [Parameter] public string MoreLabel { get; set; } = "More";
+    /// <summary>Disables toggling (reorder mode).</summary>
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ShowHandle { get; set; }
+    /// <summary>Rendered as data-id on the row root.</summary>
+    [Parameter] public string? DataId { get; set; }
+    /// <summary>Fade/expand in when first rendered.</summary>
+    [Parameter] public bool Animate { get; set; } = true;
+}

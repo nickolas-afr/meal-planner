@@ -1,0 +1,63 @@
+@inject ShoppingService ShoppingSvc
+
+<BottomSheet Open="Open" Title="@(Item is null ? "Add item" : "Edit item")" ConfirmText="Done"
+             ConfirmDisabled="@(Error is not null)" OnConfirm="ConfirmAsync" OnCancel="OnCancel">
+    <div class="form">
+        <TextField @bind-Value="_name" Label="Name" MaxLength="60" AutoFocus="true" />
+        <div class="cols">
+            <TextField @bind-Value="_qty" Label="Quantity" InputMode="decimal" Placeholder="Optional" />
+            <Picker @bind-Value="_unit" Label="Unit" Options="_unitOptions" />
+        </div>
+        <Picker @bind-Value="_market" Label="Market" Options="MarketOptions" />
+        <FieldError Id="item-sheet-err" Message="@(string.IsNullOrWhiteSpace(_name) ? null : Error)" />
+    </div>
+</BottomSheet>
+
+@code {
+    private static readonly IReadOnlyList<PickerOption> _unitOptions =
+        Units.All.Select(u => new PickerOption(u, u.Length == 0 ? "None" : u)).ToList();
+
+    private string _name = "";
+    private string _qty = "";
+    private string _unit = "";
+    private string _market = "";
+    private bool _wasOpen;
+
+    /// <summary>The manual item being edited; null when adding.</summary>
+    [Parameter] public ShoppingItem? Item { get; set; }
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public DateOnly Week { get; set; }
+    [Parameter] public IReadOnlyList<Market> Markets { get; set; } = [];
+    [Parameter] public EventCallback OnCancel { get; set; }
+    /// <summary>Raised after the item was saved.</summary>
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private IReadOnlyList<PickerOption> MarketOptions =>
+        new[] { new PickerOption("", "Anywhere") }
+            .Concat(Markets.Select(m => new PickerOption(m.Id.ToString(), m.Name))).ToList();
+
+    private string? Error => ShoppingSvc.ValidateManual(_name, _qty, _unit);
+
+    protected override void OnParametersSet()
+    {
+        if (Open && !_wasOpen)
+        {
+            _name = Item?.Name ?? "";
+            _qty = Item is null ? "" : QuantityFormat.Format(Item.Quantity, false, "");
+            _unit = Item?.Unit ?? "";
+            _market = Item?.MarketId?.ToString() ?? "";
+        }
+        _wasOpen = Open;
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (Error is not null) return;
+        Guid? marketId = Guid.TryParse(_market, out var g) ? g : null;
+        if (Item is null)
+            await ShoppingSvc.AddManual(Week, _name, _qty, _unit, marketId);
+        else
+            await ShoppingSvc.EditManual(Item.Id, _name, _qty, _unit, marketId);
+        await OnSaved.InvokeAsync();
+    }
+}

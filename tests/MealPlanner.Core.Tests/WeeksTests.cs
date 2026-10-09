@@ -45,4 +45,46 @@ public class WeeksTests
         // StartOf(2026-10-09) = 2026-10-05, minus 14 days = 2026-09-21.
         Assert.Equal(new DateOnly(2026, 9, 21), Weeks.RetentionCutoff(new DateTime(2026, 10, 9, 18, 0, 0)));
     }
+
+    private static readonly DateTime Now = new(2026, 10, 9, 12, 0, 0);   // Friday, week of Oct 5
+
+    [Theory]
+    [InlineData(2026, 10, 5, "This week")]
+    [InlineData(2026, 10, 12, "Next week")]
+    [InlineData(2026, 9, 28, "Last week")]
+    [InlineData(2026, 10, 26, "Week of Oct 26")]
+    [InlineData(2026, 9, 21, "Week of Sep 21")]
+    public void Name_describes_the_week_relative_to_today(int y, int m, int d, string expected)
+    {
+        Assert.Equal(expected, Weeks.Name(new DateOnly(y, m, d), Now));
+    }
+
+    [Fact]
+    public void RangeLabel_spans_monday_to_sunday()
+    {
+        Assert.Equal("Mon Oct 12 \u2013 Sun Oct 18", Weeks.RangeLabel(new DateOnly(2026, 10, 12)));
+    }
+
+    [Fact]
+    public void PlanMin_and_PlanMax_bound_navigation()
+    {
+        Assert.Equal(new DateOnly(2026, 9, 21), Weeks.PlanMin(Now));
+        Assert.Equal(new DateOnly(2026, 11, 2), Weeks.PlanMax(Now));
+    }
+
+    [Fact]
+    public void Name_and_RangeLabel_ignore_the_current_culture()
+    {
+        var old = System.Globalization.CultureInfo.CurrentCulture;
+        try
+        {
+            System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("de-DE");
+            Assert.Equal("Week of Oct 26", Weeks.Name(new DateOnly(2026, 10, 26), Now));
+            Assert.Equal("Mon Oct 12 \u2013 Sun Oct 18", Weeks.RangeLabel(new DateOnly(2026, 10, 12)));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = old;
+        }
+    }
 }

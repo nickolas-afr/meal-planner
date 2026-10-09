@@ -1,6 +1,177 @@
 @page "/plan"
+@using System.Globalization
+@implements IDisposable
+@inject AppState State
+@inject PlanService PlanSvc
+@inject ShoppingService ShoppingSvc
+@inject Clock Clock
+@inject NavigationManager Nav
 
 <PageTitle>Plan</PageTitle>
+
 <LargeTitleHeader Title="Plan" />
-@* M3 replaces this placeholder. *@
-<EmptyState Title="Coming soon"><Icon><CalendarIcon Size="28" /></Icon></EmptyState>
+
+<div class="content @(ShowButton ? "has-fab" : null)">
+    <Card>
+        <div class="switcher">
+        <button type="button" class="nav-btn" aria-label="Previous week" disabled="@(!PlanSvc.CanGoTo(Prev))" @onclick="() => GoWeek(Prev)"><ChevronLeftIcon Size="22" /></button>
+        <div class="centre">
+            <span class="week-name">@Weeks.Name(_week, Clock.LocalNow)</span>
+            <span class="range t-secondary">@Weeks.RangeLabel(_week)</span>
+            @if (_readOnly)
+            {
+                <Badge Variant="BadgeVariant.Neutral">Read-only</Badge>
+            }
+        </div>
+        <button type="button" class="nav-btn" aria-label="Next week" disabled="@(!PlanSvc.CanGoTo(Next))" @onclick="() => GoWeek(Next)"><ChevronRightIcon Size="22" /></button>
+        </div>
+    </Card>
+
+    <section class="section">
+        <div class="label-row">
+            <h2 class="t-section-label">Planned</h2>
+            <span class="t-secondary">@_entryCount @(_entryCount == 1 ? "meal" : "meals")</span>
+        </div>
+        @if (_groups.Count == 0)
+        {
+            <p class="none t-secondary">Nothing planned yet.</p>
+        }
+        else
+        {
+            <RowGroup>
+                @foreach (var g in _groups)
+                {
+                    var meal = g.Meal;
+                    int k = meal.Ingredients.Count;
+                    <div class="row" @key="meal.Id">
+                        <div class="info">
+                            <span class="name">@meal.Name</span>
+                            <span class="t-secondary">@k @(k == 1 ? "ingredient" : "ingredients")</span>
+                        </div>
+                        @if (g.Count > 1)
+                        {
+                            <Badge Variant="BadgeVariant.Count">×@g.Count</Badge>
+                        }
+                        @if (!_readOnly)
+                        {
+                            <Stepper Value="g.Count" Label="@meal.Name"
+                                     OnIncrement="() => PlanSvc.Add(_week, meal.Id)"
+                                     OnDecrement="() => PlanSvc.RemoveOne(_week, meal.Id)" />
+                        }
+                    </div>
+                }
+            </RowGroup>
+        }
+    </section>
+
+    @if (!_readOnly)
+    {
+        <section class="section">
+            <div class="label-row">
+                <h2 class="t-section-label">Add from your meals</h2>
+            </div>
+            @if (!State.Meals.Any())
+            {
+                <p class="none"><a class="link" href="/meals">Add meals first</a></p>
+            }
+            else if (_unplanned.Count == 0)
+            {
+                <p class="none t-secondary">Every meal is planned.</p>
+            }
+            else
+            {
+                <RowGroup>
+                    @foreach (var meal in _unplanned)
+                    {
+                        <div class="row" @key="meal.Id">
+                            <span class="name grow">@meal.Name</span>
+                            <button type="button" class="add-btn" aria-label="Add @meal.Name" @onclick="() => PlanSvc.Add(_week, meal.Id)"><PlusCircleIcon Size="28" /></button>
+                        </div>
+                    }
+                </RowGroup>
+            }
+        </section>
+    }
+</div>
+
+@if (ShowButton)
+{
+    <button type="button" class="fab" disabled="@_busy" @onclick="OnFab">@FabLabel</button>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "week")] public string? Week { get; set; }
+
+    private DateOnly _week;
+    private bool _readOnly;
+    private bool _busy;
+    private int _entryCount;
+    private ShoppingListState _listState;
+    private IReadOnlyList<PlannedMealGroup> _groups = [];
+    private IReadOnlyList<Meal> _unplanned = [];
+
+    private DateOnly Prev => _week.AddDays(-7);
+    private DateOnly Next => _week.AddDays(7);
+
+    private bool ShowButton => !_readOnly && (_entryCount > 0 || _listState != ShoppingListState.None);
+
+    private string FabLabel => _listState switch
+    {
+        ShoppingListState.UpToDate => "Open shopping list",
+        ShoppingListState.OutOfDate => "Update shopping list",
+        _ => "Create shopping list",
+    };
+
+    protected override void OnInitialized() => State.OnChange += OnStateChanged;
+
+    protected override void OnParametersSet()
+    {
+        var week = PlanSvc.ActiveWeek;
+        if (DateOnly.TryParseExact(Week, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+        {
+            var now = Clock.LocalNow;
+            var snapped = Weeks.StartOf(parsed);
+            var min = Weeks.PlanMin(now);
+            var max = Weeks.PlanMax(now);
+            week = snapped < min ? min : snapped > max ? max : snapped;
+        }
+        _week = week;
+        Refresh();
+    }
+
+    private void Refresh()
+    {
+        _readOnly = PlanSvc.IsReadOnly(_week);
+        _entryCount = PlanSvc.EntryCount(_week);
+        _groups = PlanSvc.Groups(_week);
+        _unplanned = PlanSvc.Unplanned(_week);
+        _listState = ShoppingSvc.GetState(_week);
+    }
+
+    private void OnStateChanged()
+    {
+        Refresh();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void GoWeek(DateOnly target)
+    {
+        if (!PlanSvc.CanGoTo(target)) return;
+        Nav.NavigateTo($"/plan?week={target.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}", replace: true);
+    }
+
+    private async Task OnFab()
+    {
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            if (_listState != ShoppingListState.UpToDate)
+                await ShoppingSvc.CreateOrUpdate(_week);
+            Nav.NavigateTo($"/shopping?week={_week.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}");
+        }
+        finally { _busy = false; }
+    }
+
+    public void Dispose() => State.OnChange -= OnStateChanged;
+}

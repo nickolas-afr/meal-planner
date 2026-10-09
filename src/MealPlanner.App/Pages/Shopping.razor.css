@@ -1,0 +1,74 @@
+.content { padding: 0 var(--page-x) 32px; }
+
+.weekrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+.weekbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 44px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    color: var(--accent);
+    font-size: 15px;
+    font-weight: 600;
+}
+.progress-text { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; }
+
+.bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 150ms ease-out; }
+
+.seg { margin-top: 16px; }
+.none { margin-top: 24px; text-align: center; }
+
+.group { margin-top: 20px; }
+.grouphead { display: flex; align-items: center; justify-content: space-between; margin: 0 0 8px 4px; }
+.grouphead .t-section-label { margin: 0; }
+.textbtn {
+    min-height: 32px;
+    padding: 0 4px;
+    background: transparent;
+    border: 0;
+    color: var(--accent);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+}
+
+.mealhead { display: flex; align-items: center; gap: 8px; padding: 14px 16px 6px; }
+.mealname { margin: 0; font-size: 17px; font-weight: 700; }
+
+/* Every row carries a top divider; the card's overflow clips the first one. */
+.rows { margin-top: -1px; }
+.rows ::deep .check-row { padding: 0 8px 0 16px; border-top: 1px solid var(--divider); }
+.emptygroup { margin: 0; padding: 14px 16px; font-size: 15px; }
+
+.staples {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 56px;
+    padding: 8px 16px;
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-card);
+    color: var(--text);
+    text-align: left;
+}
+.stext { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.stitle { font-size: 16px; font-weight: 600; }
+.ssub { font-size: 13px; color: var(--text-2); }
+.chev { display: flex; color: var(--icon-muted); transition: transform 150ms ease-out; }
+.chev.open { transform: rotate(180deg); }
+.staplecard { margin-top: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .chev, .fill { transition: none; }
+}

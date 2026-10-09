@@ -1,0 +1,20 @@
+@using MealPlanner.App.Components.Icons
+
+<div class="banner @Variant.ToString().ToLowerInvariant()" role="status">
+    @if (Variant == BannerVariant.Offline)
+    {
+        <CloudOffIcon Size="20" Class="lead" />
+    }
+    <span class="text">@Text</span>
+    @if (!string.IsNullOrEmpty(ActionText))
+    {
+        <button type="button" class="action" @onclick="OnAction">@ActionText</button>
+    }
+</div>
+
+@code {
+    [Parameter] public BannerVariant Variant { get; set; } = BannerVariant.Offline;
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string? ActionText { get; set; }
+    [Parameter] public EventCallback OnAction { get; set; }
+}

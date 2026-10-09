@@ -216,4 +216,19 @@ public class ValidationTests
     {
         Assert.Equal("ABCDEFGH", Validation.NormalizeInviteCode("ab-cd ef gh"));
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ItemName_requires_a_name(string? name) => Assert.NotNull(Validation.ItemName(name));
+
+    [Fact]
+    public void ItemName_allows_1_to_60_trimmed_characters()
+    {
+        Assert.Null(Validation.ItemName("a"));
+        Assert.Null(Validation.ItemName(new string('a', 60)));
+        Assert.Null(Validation.ItemName("  " + new string('a', 60) + "  "));
+        Assert.NotNull(Validation.ItemName(new string('a', 61)));
+    }
 }

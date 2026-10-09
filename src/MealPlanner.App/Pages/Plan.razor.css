@@ -1,0 +1,71 @@
+.content { padding: 8px var(--page-x) 24px; }
+.content.has-fab { padding-bottom: calc(54px + 16px + 24px); }
+
+.switcher {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px;
+}
+
+.nav-btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--surface-2);
+    color: var(--text);
+}
+.nav-btn:disabled { opacity: 0.4; }
+
+.centre { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.week-name { font-size: 17px; font-weight: 700; }
+.range { font-size: 13px; }
+.centre ::deep .badge { margin-top: 4px; }
+
+.section { margin-top: 24px; }
+.label-row { display: flex; align-items: baseline; justify-content: space-between; margin: 0 4px 8px; }
+.label-row h2 { margin: 0; }
+
+.none { margin: 8px 0 0; text-align: center; }
+.link { color: var(--accent); font-weight: 600; text-decoration: none; }
+
+.row { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 14px; }
+.info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.name { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.name.grow { flex: 1; min-width: 0; }
+
+.add-btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-right: -8px;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+}
+
+.fab {
+    position: fixed;
+    left: var(--page-x);
+    right: var(--page-x);
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 16px);
+    height: 54px;
+    border: 0;
+    border-radius: 16px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 17px;
+    font-weight: 700;
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 28%, transparent);
+    z-index: 5;
+}
+.fab:disabled { opacity: 0.6; }
