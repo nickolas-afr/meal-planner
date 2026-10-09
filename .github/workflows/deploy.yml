@@ -1,0 +1,64 @@
+name: Deploy
+
+# Publishes the PWA to Azure Static Web Apps and the API to Azure App Service on every push to main
+# (architecture.md › Hosting and deployment; setup steps in docs/deploy.md).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_SECRETS: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN != '' && secrets.AZURE_WEBAPP_NAME != '' && secrets.AZURE_WEBAPP_PUBLISH_PROFILE != '' }}
+    steps:
+      - name: Skip until Azure is set up
+        if: env.HAS_SECRETS != 'true'
+        run: echo "::notice::Deploy skipped – add the three Azure secrets (docs/deploy.md, step 6)."
+
+      - uses: actions/checkout@v5
+        if: env.HAS_SECRETS == 'true'
+
+      - uses: actions/setup-dotnet@v5
+        if: env.HAS_SECRETS == 'true'
+        with:
+          dotnet-version: 10.x
+
+      - name: Build and test
+        if: env.HAS_SECRETS == 'true'
+        run: |
+          dotnet build MealPlanner.sln -warnaserror
+          dotnet test MealPlanner.sln --no-build
+
+      - name: Publish App
+        if: env.HAS_SECRETS == 'true'
+        run: dotnet publish src/MealPlanner.App -c Release -o publish/app
+
+      - name: Deploy App to Static Web Apps
+        if: env.HAS_SECRETS == 'true'
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: publish/app/wwwroot
+          output_location: ""
+          skip_app_build: true
+          skip_api_build: true
+
+      - name: Publish API
+        if: env.HAS_SECRETS == 'true'
+        run: dotnet publish src/MealPlanner.Api -c Release -o publish/api
+
+      - name: Deploy API to App Service
+        if: env.HAS_SECRETS == 'true'
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: publish/api

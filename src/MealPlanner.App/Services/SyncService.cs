@@ -91,7 +91,21 @@ public sealed class SyncService : ISyncTrigger, IDisposable
         }
         catch (JSException) { _documentVisible = true; }
         UpdatePoll();
+        _ = WakeServerAsync();
         if (_auth.IsSignedIn) _ = SyncNowAsync();
+    }
+
+    // The F1 App Service sleeps when idle; ping it as soon as the app opens (signed in or not)
+    // so the first sync or passkey ceremony doesn't pay the whole cold start (architecture › Endpoints, health).
+    private async Task WakeServerAsync()
+    {
+        try
+        {
+            var plain = _services.GetRequiredKeyedService<HttpClient>(AuthService.AuthClientKey);
+            using var cts = new CancellationTokenSource(RequestTimeout);
+            using var _ = await plain.GetAsync("api/health", cts.Token);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException) { }
     }
 
     public void SetShoppingVisible(bool visible)

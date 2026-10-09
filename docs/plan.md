@@ -133,7 +133,7 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
 
 ## M7 · Deploy and go live
 
-- [ ] Write `docs/deploy.md`, a step-by-step guide for the owner to do in the Azure portal:
+- [x] Write `docs/deploy.md`, a step-by-step guide for the owner to do in the Azure portal:
   - a resource group
   - a Static Web App on the Free plan (deployment source "Other"; copy the deployment token)
   - a Linux App Service plan F1 and a Web App (.NET 10, or self-contained)
