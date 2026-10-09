@@ -90,7 +90,7 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
 - [x] `staticwebapp.config.json` as specified.
 - [x] Settings › Backup (export, import with counts and confirm) and Settings › App (version, check for updates).
 - [x] Accessibility pass against ui.md › Accessibility.
-- [ ] Manual check in Safari's responsive mode at 390 × 844 in both themes.
+- [x] Manual check in Safari's responsive mode at 390 × 844 in both themes.
 
 **Done when:**
 
