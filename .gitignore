@@ -489,3 +489,9 @@ meal-planner-docs.zip
 
 # Core backup code, not a Visual Studio upgrade backup (overrides Backup*/ above)
 !src/MealPlanner.Core/Backup/
+
+# Local API database (dev)
+src/MealPlanner.Api/*.db
+src/MealPlanner.Api/*.db-shm
+src/MealPlanner.Api/*.db-wal
+src/MealPlanner.Api/*.db-journal

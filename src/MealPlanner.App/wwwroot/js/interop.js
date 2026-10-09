@@ -132,5 +132,83 @@
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    window.mealPlanner = Object.assign(api, { sortable, sw, downloadFile });
+    const b64uToBuf = s => {
+        const b = s.replace(/-/g, '+').replace(/_/g, '/');
+        const bin = atob(b + '='.repeat((4 - b.length % 4) % 4));
+        const out = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+        return out.buffer;
+    };
+    const bufToB64u = buf => {
+        if (buf == null) return null;
+        const bytes = new Uint8Array(buf);
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    };
+    // Rethrows keeping the DOMException name in the message so .NET's JSException shows it.
+    async function ceremony(fn) {
+        try { return await fn(); }
+        catch (e) {
+            const err = new Error((e && e.name ? e.name : 'Error') + ': ' + (e && e.message ? e.message : ''));
+            err.name = e && e.name ? e.name : 'Error';
+            throw err;
+        }
+    }
+    const webauthn = {
+        // Returns the credential as JSON (base64url binary fields).
+        create(optionsJson) {
+            return ceremony(async () => {
+                const o = JSON.parse(optionsJson);
+                o.challenge = b64uToBuf(o.challenge);
+                o.user.id = b64uToBuf(o.user.id);
+                (o.excludeCredentials || []).forEach(c => { c.id = b64uToBuf(c.id); });
+                const cred = await navigator.credentials.create({ publicKey: o });
+                if (!cred) throw new DOMException('No credential', 'NotAllowedError');
+                const r = cred.response;
+                const response = { clientDataJSON: bufToB64u(r.clientDataJSON), attestationObject: bufToB64u(r.attestationObject) };
+                if (typeof r.getTransports === 'function') response.transports = r.getTransports();
+                return JSON.stringify({ id: cred.id, rawId: bufToB64u(cred.rawId), type: cred.type, response, clientExtensionResults: {} });
+            });
+        },
+        get(optionsJson) {
+            return ceremony(async () => {
+                const o = JSON.parse(optionsJson);
+                o.challenge = b64uToBuf(o.challenge);
+                (o.allowCredentials || []).forEach(c => { c.id = b64uToBuf(c.id); });
+                const cred = await navigator.credentials.get({ publicKey: o, mediation: 'optional' });
+                if (!cred) throw new DOMException('No credential', 'NotAllowedError');
+                const r = cred.response;
+                return JSON.stringify({
+                    id: cred.id, rawId: bufToB64u(cred.rawId), type: cred.type,
+                    response: {
+                        clientDataJSON: bufToB64u(r.clientDataJSON),
+                        authenticatorData: bufToB64u(r.authenticatorData),
+                        signature: bufToB64u(r.signature),
+                        userHandle: bufToB64u(r.userHandle)
+                    },
+                    clientExtensionResults: {}
+                });
+            });
+        }
+    };
+
+    const extras = {
+        webauthn,
+        isOnline() { return navigator.onLine; },
+        onConnectivityChange(dotnetRef) {
+            const notify = () => { try { dotnetRef.invokeMethodAsync('OnConnectivityChanged', navigator.onLine); } catch (e) { console.warn(e); } };
+            window.addEventListener('online', notify);
+            window.addEventListener('offline', notify);
+        },
+        async share(text) {
+            if (!navigator.share) return false;
+            try { await navigator.share({ text }); return true; } catch (e) { return false; }
+        },
+        async copy(text) {
+            try { await navigator.clipboard.writeText(text); return true; } catch (e) { return false; }
+        }
+    };
+
+    window.mealPlanner = Object.assign(api, { sortable, sw, downloadFile }, extras);
 })();

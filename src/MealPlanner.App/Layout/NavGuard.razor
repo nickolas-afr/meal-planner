@@ -1,9 +1,59 @@
+@implements IDisposable
 @using MealPlanner.App.Services
 @inject Features Features
+@inject AuthService Auth
+@inject NavigationManager Nav
 
-@* With RequireAuth off (until M5) every route is open. M5 adds the redirects from ui.md › Navigation. *@
-@ChildContent
+@if (!_redirecting)
+{
+    @ChildContent
+}
 
 @code {
+    private static readonly string[] OpenRoutes = ["welcome", "create", "join"];
+
+    private bool _redirecting;
+
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        Auth.OnChange += OnAuthChanged;
+        Check();
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => InvokeAsync(() =>
+    {
+        Check();
+        StateHasChanged();
+    });
+
+    private void OnAuthChanged() => InvokeAsync(() =>
+    {
+        Check();
+        StateHasChanged();
+    });
+
+    private void Check()
+    {
+        _redirecting = false;
+        if (!Features.RequireAuth) return;
+        var path = Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].Trim('/');
+        var open = OpenRoutes.Contains(path, StringComparer.Ordinal);
+        if (!Auth.IsSignedIn && !open) Redirect("/welcome");
+        else if (Auth.IsSignedIn && open) Redirect("/meals");
+    }
+
+    private void Redirect(string target)
+    {
+        _redirecting = true;
+        Nav.NavigateTo(target, replace: true);
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        Auth.OnChange -= OnAuthChanged;
+    }
 }

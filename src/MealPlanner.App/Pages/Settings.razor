@@ -6,13 +6,56 @@
 @inject BackupService Backup
 @inject PreferencesService Prefs
 @inject UpdateService Updates
+@inject AuthService Auth
+@inject NavigationManager Nav
 @using System.Globalization
+@using MealPlanner.Core.Auth
 
 <PageTitle>Settings</PageTitle>
 <NavHeader BackHref="/meals" BackLabel="Meals" Title="Settings" />
 
 <div class="content">
-    @* M5 adds the Household section above Markets and the Account section after App. *@
+    @if (Auth.IsSignedIn)
+    {
+        <section>
+            <h2 class="t-section-label">Household</h2>
+            @if (_me is not null)
+            {
+                <div class="card">
+                    <div class="arow static"><span class="atext"><span class="atitle">@_me.Household.Name</span></span></div>
+                    @foreach (var m in _me.Members)
+                    {
+                        <div class="arow static">
+                            <span class="atext"><span class="atitle">@m.DisplayName</span></span>
+                            @if (m.UserId == _me.UserId)
+                            {
+                                <Badge Variant="BadgeVariant.Neutral">You</Badge>
+                            }
+                        </div>
+                    }
+                    @if (_me.Members.Count < 4)
+                    {
+                        <button type="button" class="arow" disabled="@_inviting" @onclick="InviteAsync">
+                            <span class="atext"><span class="atitle accent">Invite someone</span></span>
+                        </button>
+                    }
+                </div>
+                <FieldError Id="invite-err" Message="@_inviteError" />
+            }
+            else if (_meLoading)
+            {
+                <div class="card"><div class="arow static"><span class="atext t-secondary">Loading...</span></div></div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="arow static"><span class="atext t-secondary">Couldn't load your household.</span></div>
+                    <button type="button" class="arow" @onclick="LoadMeAsync"><span class="atext"><span class="atitle accent">Retry</span></span></button>
+                </div>
+            }
+        </section>
+    }
+
     <section>
         <h2 class="t-section-label">Markets</h2>
         <div class="card">
@@ -79,7 +122,36 @@
             </button>
         </div>
     </section>
+
+    @if (Auth.IsSignedIn)
+    {
+        <section>
+            <h2 class="t-section-label">Account</h2>
+            <div class="card">
+                <button type="button" class="arow" @onclick="@(() => _confirmSignOut = true)">
+                    <span class="atext"><span class="atitle danger">Sign out</span></span>
+                </button>
+            </div>
+        </section>
+    }
 </div>
+
+<ConfirmDialog Open="_confirmSignOut" Title="Sign out?" Message="Sign out on this iPhone? Your household's data stays on the server."
+               ConfirmText="Sign out" Destructive="true" OnConfirm="SignOutAsync" OnCancel="@(() => _confirmSignOut = false)" />
+
+<BottomSheet Open="_invite is not null" Title="Invite" OnCancel="CloseInvite">
+    @if (_invite is not null)
+    {
+        <div class="invite">
+            <p class="invite-code" aria-label="Invite code">@FormatCode(_invite.Code)</p>
+            <p class="t-secondary">Valid until @_invite.ExpiresAt.ToLocalTime().ToString("ddd h:mm tt", CultureInfo.InvariantCulture)</p>
+            <div class="invite-actions">
+                <PrimaryButton OnClick="ShareAsync">Share</PrimaryButton>
+                <PrimaryButton Variant="ButtonVariant.Secondary" OnClick="CopyAsync">@(_copied ? "Copied" : "Copy")</PrimaryButton>
+            </div>
+        </div>
+    }
+</BottomSheet>
 
 <ConfirmDialog Open="_preview is not null" Title="Import data?" Message="@ImportMessage" ConfirmText="Import" Destructive="true"
                OnConfirm="ImportAsync" OnCancel="@(() => _preview = null)" />
@@ -98,6 +170,56 @@
                OnConfirm="DeleteAsync" OnCancel="@(() => _confirmDelete = false)" />
 
 @code {
+    private MeResponse? _me;
+    private bool _meLoading;
+    private bool _inviting;
+    private string? _inviteError;
+    private InviteResponse? _invite;
+    private bool _copied;
+    private bool _confirmSignOut;
+
+    private static string FormatCode(string code) => code.Length == 8 ? code[..4] + "-" + code[4..] : code;
+
+    private async Task LoadMeAsync()
+    {
+        _meLoading = true;
+        StateHasChanged();
+        _me = await Auth.GetMeAsync();
+        _meLoading = false;
+        if (!_disposed) StateHasChanged();
+    }
+
+    private async Task InviteAsync()
+    {
+        _inviting = true;
+        _inviteError = null;
+        _copied = false;
+        _invite = await Auth.CreateInviteAsync();
+        if (_invite is null) _inviteError = "Couldn't create an invite. Try again.";
+        _inviting = false;
+    }
+
+    private void CloseInvite() => _invite = null;
+
+    private async Task ShareAsync()
+    {
+        if (_invite is null) return;
+        await JS.InvokeAsync<bool>("mealPlanner.share", $"Join our meal planner: code {FormatCode(_invite.Code)} at {Nav.BaseUri}");
+    }
+
+    private async Task CopyAsync()
+    {
+        if (_invite is null) return;
+        _copied = await JS.InvokeAsync<bool>("mealPlanner.copy", _invite.Code);
+    }
+
+    private async Task SignOutAsync()
+    {
+        _confirmSignOut = false;
+        await Auth.SignOutAsync();
+        Nav.NavigateTo("/welcome", replace: true);
+    }
+
     private BackupPreview? _preview;
     private string? _importError;
     private bool _imported;
@@ -194,6 +316,7 @@
     {
         _self = DotNetObjectReference.Create(this);
         State.OnChange += OnStateChanged;
+        if (Auth.IsSignedIn) _ = LoadMeAsync();
     }
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);

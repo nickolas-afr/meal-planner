@@ -304,6 +304,8 @@ All endpoints are under `/api` and use JSON. Everything except `auth/*` and `hea
 | `POST household/invites` | → `{ code, expiresAt }` | 8 characters from Crockford base32, valid 48 h. |
 | `POST sync` | `SyncRequest` → `SyncResponse` | See the sync protocol below. |
 
+Request and response bodies are records in `Core/Auth/AuthContracts.cs`, shared by App and Api. WebAuthn options, attestations and assertions travel as raw JSON (`JsonElement`) with base64url binary fields. Error bodies are `{ error }` with codes from `AuthErrors` (`invite_invalid`, `household_full`, `invalid_request`, `passkey_failed`, `flow_expired`, `invalid_token`).
+
 `TokenPair` is `{ accessToken, accessTokenExpiresAt, refreshToken }`:
 
 - **Access token:** a JWT signed with HMAC-SHA256. Lifetime 15 min. Claims: `sub` = userId, `hid` = householdId.

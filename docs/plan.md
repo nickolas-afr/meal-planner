@@ -99,18 +99,18 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
 
 ## M5 · API and accounts
 
-- [ ] EF Core model and first migration for every table in architecture.md › Tables. Apply migrations on startup; set the SQLite pragma.
-- [ ] Options classes for `Auth` and `Cors`, CORS policy, JWT bearer authentication, and `HouseholdId` read from the `hid` claim.
-- [ ] `TokenService` (issue, refresh with rotation, revoke) and `PasskeyService` (Fido2: begin and complete for registration and login, ceremony state in `IMemoryCache`).
-- [ ] Endpoints: `health`, `auth/*`, `me`, `household/invites`, with the error codes in the endpoint table.
-- [ ] App:
+- [x] EF Core model and first migration for every table in architecture.md › Tables. Apply migrations on startup; set the SQLite pragma.
+- [x] Options classes for `Auth` and `Cors`, CORS policy, JWT bearer authentication, and `HouseholdId` read from the `hid` claim.
+- [x] `TokenService` (issue, refresh with rotation, revoke) and `PasskeyService` (Fido2: begin and complete for registration and login, ceremony state in `IMemoryCache`).
+- [x] Endpoints: `health`, `auth/*`, `me`, `household/invites`, with the error codes in the endpoint table.
+- [x] App:
   - WebAuthn interop in `interop.js`
   - `AuthService`: register, join, sign in, refresh, sign out
   - token `DelegatingHandler`
   - Welcome, Create and Join pages
   - Settings › Household (members, invite sheet with Share and Copy) and Settings › Account (Sign out)
   - Set `Features:RequireAuth = true`.
-- [ ] Api.Tests (`WebApplicationFactory`, SQLite in-memory): refresh rotation (an old token is rejected after use); invite expiry, single use and the 4-member limit; `me` returns only your household. Passkey verification itself is not unit-tested; test it manually on a device in M7.
+- [x] Api.Tests (`WebApplicationFactory`, SQLite in-memory): refresh rotation (an old token is rejected after use); invite expiry, single use and the 4-member limit; `me` returns only your household. Passkey verification itself is not unit-tested; test it manually on a device in M7.
 
 **Done when:** locally, in Safari on a Mac with Touch ID or iCloud Keychain, you can create a household, invite, join from a second browser profile, sign out and sign in.
 

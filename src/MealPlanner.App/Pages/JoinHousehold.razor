@@ -1,0 +1,43 @@
+@page "/join"
+@inject AuthService Auth
+@inject NavigationManager Nav
+@using MealPlanner.Core
+
+<PageTitle>Join household</PageTitle>
+<NavHeader BackHref="/welcome" BackLabel="Welcome" Title="Join household" />
+
+<form class="content" @onsubmit="SubmitAsync">
+    <div class="code">
+        <TextField Value="@_code" ValueChanged="OnCodeChanged" Label="Invite code" Placeholder="ABCD-EFGH" MaxLength="9"
+                   Disabled="_busy" AutoFocus="true" autocapitalize="characters" autocorrect="off" spellcheck="false" />
+    </div>
+    <TextField @bind-Value="_name" Label="Your name" MaxLength="@Validation.DisplayNameMax" Disabled="_busy" />
+    <PrimaryButton Type="submit" Disabled="@(_busy || !Valid)">Continue with Face ID</PrimaryButton>
+    <FieldError Id="join-err" Message="@_error" />
+</form>
+
+@code {
+    private string _code = "";
+    private string _name = "";
+    private bool _busy;
+    private string? _error;
+
+    private bool Valid => Validation.InviteCode(_code) is null && Validation.DisplayName(_name) is null;
+
+    private void OnCodeChanged(string value)
+    {
+        var n = new string(Validation.NormalizeInviteCode(value).Where(char.IsLetterOrDigit).Take(Validation.InviteCodeLength).ToArray());
+        _code = n.Length > 4 ? n[..4] + "-" + n[4..] : n;
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_busy || !Valid) return;
+        _busy = true;
+        _error = null;
+        var result = await Auth.JoinAsync(_code, _name);
+        _busy = false;
+        if (result.Ok) Nav.NavigateTo("/meals", replace: true);
+        else _error = result.Error;
+    }
+}

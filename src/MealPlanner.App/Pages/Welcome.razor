@@ -1,0 +1,47 @@
+@page "/welcome"
+@implements IDisposable
+@inject AuthService Auth
+@inject ConnectivityService Net
+@inject NavigationManager Nav
+
+<PageTitle>Welcome</PageTitle>
+
+<div class="welcome">
+    <img class="icon" src="icons/icon-192.png" alt="" width="72" height="72" />
+    <h1 class="name">Meal Planner</h1>
+    <p class="tagline">Plan the week together. Shop from one list.</p>
+
+    <div class="actions">
+        <PrimaryButton Disabled="@Blocked" OnClick="@(() => Nav.NavigateTo("/create"))">Create a household</PrimaryButton>
+        <PrimaryButton Variant="ButtonVariant.Secondary" Disabled="@Blocked" OnClick="@(() => Nav.NavigateTo("/join"))">I have an invite code</PrimaryButton>
+        <button type="button" class="text-btn" disabled="@Blocked" @onclick="SignInAsync">Sign in</button>
+        <FieldError Id="signin-err" Message="@_error" />
+        @if (!Net.IsOnline)
+        {
+            <p class="offline">Connect to the internet to get started.</p>
+        }
+    </div>
+</div>
+
+@code {
+    private bool _busy;
+    private string? _error;
+
+    private bool Blocked => _busy || !Net.IsOnline;
+
+    protected override void OnInitialized() => Net.OnChange += OnNetChanged;
+
+    private void OnNetChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task SignInAsync()
+    {
+        _busy = true;
+        _error = null;
+        var result = await Auth.SignInAsync();
+        _busy = false;
+        if (result.Ok) Nav.NavigateTo("/meals", replace: true);
+        else _error = result.Error;
+    }
+
+    public void Dispose() => Net.OnChange -= OnNetChanged;
+}

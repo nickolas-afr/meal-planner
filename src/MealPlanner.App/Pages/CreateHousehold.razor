@@ -1,0 +1,30 @@
+@page "/create"
+@inject AuthService Auth
+@inject NavigationManager Nav
+@using MealPlanner.Core
+
+<PageTitle>Create household</PageTitle>
+<NavHeader BackHref="/welcome" BackLabel="Welcome" Title="Create household" />
+
+<form class="content" @onsubmit="SubmitAsync">
+    <TextField @bind-Value="_name" Label="Your name" MaxLength="@Validation.DisplayNameMax" Disabled="_busy" AutoFocus="true" />
+    <PrimaryButton Type="submit" Disabled="@(_busy || Validation.DisplayName(_name) is not null)">Continue with Face ID</PrimaryButton>
+    <FieldError Id="create-err" Message="@_error" />
+</form>
+
+@code {
+    private string _name = "";
+    private bool _busy;
+    private string? _error;
+
+    private async Task SubmitAsync()
+    {
+        if (_busy || Validation.DisplayName(_name) is not null) return;
+        _busy = true;
+        _error = null;
+        var result = await Auth.CreateHouseholdAsync(_name);
+        _busy = false;
+        if (result.Ok) Nav.NavigateTo("/meals", replace: true);
+        else _error = result.Error;
+    }
+}

@@ -1,0 +1,8 @@
+.content { display: flex; flex-direction: column; gap: 16px; padding: 8px var(--page-x) 24px; }
+
+.code ::deep input {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 20px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}

@@ -106,3 +106,18 @@ section .t-section-label { margin: 0 0 8px 4px; }
     border: 0;
     white-space: nowrap;
 }
+
+.atitle.accent { color: var(--accent); font-weight: 700; }
+.atitle.danger { color: var(--danger); }
+
+.invite { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 8px 0 16px; text-align: center; }
+.invite-code {
+    margin: 0;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: var(--text);
+}
+.invite-actions { display: flex; gap: 12px; width: 100%; margin-top: 12px; }
+.invite-actions ::deep .btn { flex: 1; }
