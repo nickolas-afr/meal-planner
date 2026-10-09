@@ -10,13 +10,14 @@ namespace MealPlanner.App.Services;
 
 /// <summary>
 /// Pushes the outbox and pulls changes through POST api/sync (architecture › SyncService).
-/// Triggers: app start, document visible, online, <see cref="RequestSync"/> (1 s debounce) and a 10 s timer
-/// while the Shopping page and the document are visible. One sync at a time; a request during a run queues exactly one more.
+/// Triggers: app start, document visible, online, <see cref="RequestSync"/> (1 s debounce) and a timer while the
+/// document is visible: every 10 s on the Shopping page, every 30 s elsewhere. One sync at a time; a request during a run queues exactly one more.
 /// </summary>
 public sealed class SyncService : ISyncTrigger, IDisposable
 {
     private static readonly TimeSpan Debounce = TimeSpan.FromSeconds(1);
-    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan ShoppingPollInterval = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(45);
     private static readonly TimeSpan StaleAfter = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan[] Backoff =
@@ -37,6 +38,7 @@ public sealed class SyncService : ISyncTrigger, IDisposable
     private Timer? _debounce;
     private Timer? _retry;
     private Timer? _poll;
+    private TimeSpan _pollInterval;
     private DotNetObjectReference<SyncService>? _self;
 
     private bool _running;
@@ -256,11 +258,17 @@ public sealed class SyncService : ISyncTrigger, IDisposable
         UpdateBanner();
     }
 
+    // While the app is visible and signed in: every 10 s on Shopping, every 30 s elsewhere.
     private void UpdatePoll()
     {
-        var want = _shoppingVisible && _documentVisible && _auth.IsSignedIn;
-        if (want && _poll is null)
-            _poll = new Timer(_ => _ = SyncNowAsync(), null, PollInterval, PollInterval);
+        var want = _documentVisible && _auth.IsSignedIn;
+        var interval = _shoppingVisible ? ShoppingPollInterval : PollInterval;
+        if (want && (_poll is null || interval != _pollInterval))
+        {
+            _poll?.Dispose();
+            _pollInterval = interval;
+            _poll = new Timer(_ => _ = SyncNowAsync(), null, interval, interval);
+        }
         else if (!want && _poll is not null)
         {
             _poll.Dispose();

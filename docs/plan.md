@@ -117,7 +117,7 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
 ## M6 · Sync
 
 - [x] Core `SyncContracts` and the `POST /api/sync` handler: validation, transactional apply with version stamping, daily purge, full or incremental response.
-- [x] `SyncService`: triggers, the 10 s timer only on a visible Shopping page, the algorithm and error handling from architecture.md › SyncService, and the offline banner.
+- [x] `SyncService`: triggers, the polling timer while visible (10 s on Shopping, 30 s elsewhere), the algorithm and error handling from architecture.md › SyncService, and the offline banner.
 - [x] After sign-in or join, run a first sync with `since = 0`. A brand-new member starts with an empty local store; the server data fills it.
 - [x] Import (M4) goes through the outbox, so it reaches the other phone.
 - [x] Api.Tests:

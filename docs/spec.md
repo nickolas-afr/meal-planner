@@ -112,7 +112,7 @@ Meal Planner keeps a household's library of meals, lets either person pick the m
 - Changes reach the other phone automatically:
   - on app open and when the app returns to the foreground
   - about 1 second after each change
-  - every 10 seconds while the Shopping tab is on screen
+  - every 10 seconds while the Shopping tab is on screen, and every 30 seconds on the other tabs (only while the app is open and visible)
   - when the connection comes back
 - While shopping together, a tick on one phone shows on the other within about 10 seconds.
 - **Conflicts:** if both people change the same thing, the change that reaches the server last wins. "Same thing" means the same meal, ingredient, market, plan entry or shopping item. Two people ticking different items never conflict.

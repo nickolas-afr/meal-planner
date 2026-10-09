@@ -237,7 +237,7 @@ On startup and after each sync, `PlanService` prunes old weeks. Every `PlannedMe
   - `visibilitychange` to visible
   - `online` event
   - `RequestSync()` (debounced 1 s)
-  - a 10 s timer that runs only while the Shopping page is on screen and the document is visible
+  - a timer while the document is visible: every 10 s on the Shopping page, every 30 s on other pages
 - One sync runs at a time. If a sync is requested while one is running, one more runs after it.
 - **Algorithm:**
   1. Snapshot the outbox: ids and their seqs. Build `changes` from the current local entities for those ids.
