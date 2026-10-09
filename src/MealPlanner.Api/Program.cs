@@ -8,6 +8,7 @@ using MealPlanner.Core.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
@@ -18,6 +19,8 @@ builder.Services.Configure<MealPlanner.Api.Options.CorsOptions>(builder.Configur
 
 builder.Services.AddDbContext<AppDb>(o => o.UseSqlite(builder.Configuration.GetConnectionString("Db")));
 builder.Services.AddMemoryCache();
+builder.Services.TryAddSingleton(TimeProvider.System);
+builder.Services.AddScoped<MealPlanner.Api.Sync.SyncHandler>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<PasskeyService>();
 builder.Services.AddSingleton<IFido2>(sp =>
@@ -86,6 +89,7 @@ api.AddEndpointFilter(async (ctx, next) =>
 api.MapHealth();
 api.MapAuth();
 api.MapHousehold();
+api.MapSync();
 
 app.Run();
 

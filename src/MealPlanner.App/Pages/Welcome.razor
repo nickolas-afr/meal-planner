@@ -10,6 +10,10 @@
     <img class="icon" src="icons/icon-192.png" alt="" width="72" height="72" />
     <h1 class="name">Meal Planner</h1>
     <p class="tagline">Plan the week together. Shop from one list.</p>
+    @if (Reason == "expired")
+    {
+        <p class="offline">Please sign in again.</p>
+    }
 
     <div class="actions">
         <PrimaryButton Disabled="@Blocked" OnClick="@(() => Nav.NavigateTo("/create"))">Create a household</PrimaryButton>
@@ -24,6 +28,8 @@
 </div>
 
 @code {
+    [SupplyParameterFromQuery(Name = "reason")] public string? Reason { get; set; }
+
     private bool _busy;
     private string? _error;
 

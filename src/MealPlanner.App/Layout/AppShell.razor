@@ -2,11 +2,15 @@
 @implements IDisposable
 @inject NavigationManager Nav
 @inject UpdateService Updates
+@inject IServiceProvider Services
 
 <NavGuard>
     <div class="shell">
         <div class="banner-stack @(HasBanners ? "has-banners" : null)">
-            @* Banner stack: Offline / List out of date banners go here too (stacked, under the safe area). *@
+            @if (ShowOffline)
+            {
+                <Banner Variant="BannerVariant.Offline" Text="Offline – changes will sync" />
+            }
             @if (Updates.UpdateAvailable)
             {
                 <Banner Variant="BannerVariant.UpdateAvailable" Text="New version available" ActionText="Reload" OnAction="Updates.ReloadAsync" />
@@ -23,7 +27,11 @@
 </NavGuard>
 
 @code {
-    private bool HasBanners => Updates.UpdateAvailable;
+    private SyncService? _sync;
+
+    private bool ShowOffline => _sync?.ShowOfflineBanner ?? false;
+
+    private bool HasBanners => Updates.UpdateAvailable || ShowOffline;
 
     private bool ShowTabBar
     {
@@ -38,6 +46,8 @@
     {
         Nav.LocationChanged += OnLocationChanged;
         Updates.OnChange += OnUpdatesChanged;
+        _sync = Services.GetService<SyncService>();
+        if (_sync is not null) _sync.OnChange += OnUpdatesChanged;
     }
 
     private void OnUpdatesChanged() => InvokeAsync(StateHasChanged);
@@ -48,5 +58,6 @@
     {
         Nav.LocationChanged -= OnLocationChanged;
         Updates.OnChange -= OnUpdatesChanged;
+        if (_sync is not null) _sync.OnChange -= OnUpdatesChanged;
     }
 }

@@ -39,5 +39,33 @@ public sealed class AppState
         }
     }
 
+    /// <summary>Removes an entity from memory (sync "full" pulls only). Only SyncService calls this.</summary>
+    public void Remove(Entity entity)
+    {
+        switch (entity)
+        {
+            case Market e: Data.Markets.Remove(e.Id); break;
+            case Ingredient e: Data.Ingredients.Remove(e.Id); break;
+            case Meal e: Data.Meals.Remove(e.Id); break;
+            case PlannedMeal e: Data.PlannedMeals.Remove(e.Id); break;
+            case ShoppingList e: Data.ShoppingLists.Remove(e.Id); break;
+            case ShoppingItem e: Data.ShoppingItems.Remove(e.Id); break;
+            default: throw new ArgumentException($"Unknown entity type {entity.GetType().Name}.", nameof(entity));
+        }
+    }
+
+    /// <summary>Every entity (including tombstones) by id.</summary>
+    public Dictionary<Guid, Entity> AllEntities()
+    {
+        var all = new Dictionary<Guid, Entity>();
+        foreach (var e in Data.Markets.Values) all[e.Id] = e;
+        foreach (var e in Data.Ingredients.Values) all[e.Id] = e;
+        foreach (var e in Data.Meals.Values) all[e.Id] = e;
+        foreach (var e in Data.PlannedMeals.Values) all[e.Id] = e;
+        foreach (var e in Data.ShoppingLists.Values) all[e.Id] = e;
+        foreach (var e in Data.ShoppingItems.Values) all[e.Id] = e;
+        return all;
+    }
+
     public void NotifyChanged() => OnChange?.Invoke();
 }

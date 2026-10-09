@@ -193,11 +193,23 @@
         }
     };
 
+    const visibility = {
+        isVisible() { return document.visibilityState === 'visible'; },
+        // dotnetRef.OnVisibilityChanged(bool visible)
+        onVisibilityChange(dotnetRef) {
+            document.addEventListener('visibilitychange', () => {
+                try { dotnetRef.invokeMethodAsync('OnVisibilityChanged', document.visibilityState === 'visible'); } catch (e) { console.warn(e); }
+            });
+        }
+    };
+
     const extras = {
         webauthn,
+        visibility,
         isOnline() { return navigator.onLine; },
         onConnectivityChange(dotnetRef) {
-            const notify = () => { try { dotnetRef.invokeMethodAsync('OnConnectivityChanged', navigator.onLine); } catch (e) { console.warn(e); } };
+            // Report the event's own type: it is what changed, and navigator.onLine can lag behind it.
+            const notify = (e) => { try { dotnetRef.invokeMethodAsync('OnConnectivityChanged', e.type === 'online'); } catch (err) { console.warn(err); } };
             window.addEventListener('online', notify);
             window.addEventListener('offline', notify);
         },

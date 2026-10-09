@@ -79,6 +79,18 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         return new TestUser(first!.Id, household.Id, first.DisplayName, tokens);
     }
 
+    /// <summary>Adds another member to the household of <paramref name="existing"/> and returns them with real tokens.</summary>
+    public async Task<TestUser> AddMember(TestUser existing, string name = "Sam")
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDb>();
+        var u = new User { Id = Guid.NewGuid(), HouseholdId = existing.HouseholdId, DisplayName = name, CreatedAt = DateTime.UtcNow };
+        db.Users.Add(u);
+        await db.SaveChangesAsync();
+        TokenPair tokens = await scope.ServiceProvider.GetRequiredService<TokenService>().IssueAsync(u);
+        return new TestUser(u.Id, u.HouseholdId, name, tokens);
+    }
+
     public HttpClient ClientFor(TestUser? user = null)
     {
         HttpClient client = CreateClient();

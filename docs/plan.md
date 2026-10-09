@@ -116,18 +116,18 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
 
 ## M6 · Sync
 
-- [ ] Core `SyncContracts` and the `POST /api/sync` handler: validation, transactional apply with version stamping, daily purge, full or incremental response.
-- [ ] `SyncService`: triggers, the 10 s timer only on a visible Shopping page, the algorithm and error handling from architecture.md › SyncService, and the offline banner.
-- [ ] After sign-in or join, run a first sync with `since = 0`. A brand-new member starts with an empty local store; the server data fills it.
-- [ ] Import (M4) goes through the outbox, so it reaches the other phone.
-- [ ] Api.Tests:
+- [x] Core `SyncContracts` and the `POST /api/sync` handler: validation, transactional apply with version stamping, daily purge, full or incremental response.
+- [x] `SyncService`: triggers, the 10 s timer only on a visible Shopping page, the algorithm and error handling from architecture.md › SyncService, and the offline banner.
+- [x] After sign-in or join, run a first sync with `since = 0`. A brand-new member starts with an empty local store; the server data fills it.
+- [x] Import (M4) goes through the outbox, so it reaches the other phone.
+- [x] Api.Tests:
   - two users of one household see each other's changes
   - another household's data is never returned
   - last write wins by arrival order
   - tombstones are returned
   - `since` below `PurgedThroughVersion` gives `Full = true`
   - oversize payloads and wrong types return 400
-- [ ] Core or App tests for the client merge: an incoming entity that is still in the outbox is skipped; a `full` response keeps outbox entities.
+- [x] Core or App tests for the client merge: an incoming entity that is still in the outbox is skipped; a `full` response keeps outbox entities.
 
 **Done when:** with two browser profiles, a change in one shows in the other within about 10 s while Shopping is open. An offline edit syncs after reconnecting. Both profiles creating the same week's list end up with one list.
 

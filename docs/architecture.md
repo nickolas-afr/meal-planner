@@ -252,6 +252,7 @@ On startup and after each sync, `PlanService` prunes old weeks. Every `PlannedMe
   - 401: try a refresh once, then retry the sync. If the refresh fails, go to `/welcome` with "Please sign in again", keeping local data.
   - Network failure or 5xx: retry with backoff (2 s, 5 s, 15 s, 30 s, then every 60 s).
   - Offline banner: shown when `navigator.onLine` is false, or when the last attempt failed and the last success was more than 60 s ago.
+- Steps 1 and 4 are pure functions in Core (`SyncMerge.BuildChanges`, `SyncMerge.Apply`) so they are unit-tested; `SyncService` does the I/O. Incoming entities go straight into `AppState` (never through `EntityWriter`), so they don't re-enter the outbox.
 - `full` handling covers a phone that was away long enough for the server to purge tombstones it never saw.
 
 ### PWA

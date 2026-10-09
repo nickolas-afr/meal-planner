@@ -117,7 +117,8 @@ public sealed class AuthService
         var pair = await response.Content.ReadFromJsonAsync<TokenPair>();
         if (pair is null) return Generic;
         await SetTokensAsync(pair);
-        // M6: first sync with since = 0
+        // First sync (LastVersion is 0 on a fresh store). Not awaited: the server may be waking up.
+        _ = _services.GetService<SyncService>()?.SyncNowAsync();
         return new AuthResult(true);
     }
 
@@ -153,6 +154,41 @@ public sealed class AuthService
         }
         finally { _refreshLock.Release(); }
     }
+
+    /// <summary>
+    /// Forces a refresh. True: new tokens held. False: the server rejected the refresh token (tokens cleared).
+    /// Null: the server could not be reached.
+    /// </summary>
+    public async Task<bool?> TryRefreshAsync()
+    {
+        await _refreshLock.WaitAsync();
+        try
+        {
+            var t = _tokens;
+            if (t is null) return false;
+            try
+            {
+                var r = await Plain.PostAsJsonAsync("api/auth/refresh", new RefreshRequest(t.RefreshToken));
+                if (r.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    await SetTokensAsync(null);
+                    return false;
+                }
+                if (!r.IsSuccessStatusCode) return null;
+                var pair = await r.Content.ReadFromJsonAsync<TokenPair>();
+                if (pair is null) return null;
+                await SetTokensAsync(pair);
+                return true;
+            }
+            catch (HttpRequestException) { return null; }
+            catch (TaskCanceledException) { return null; }
+            catch (JsonException) { return null; }
+        }
+        finally { _refreshLock.Release(); }
+    }
+
+    /// <summary>Drops the tokens but keeps local data (the session is no longer valid). The user signs in again.</summary>
+    public Task ExpireSessionAsync() => SetTokensAsync(null);
 
     public async Task SignOutAsync()
     {

@@ -36,8 +36,16 @@ builder.Services.AddKeyedSingleton<HttpClient>(AuthService.ApiClientKey, (sp, _)
     new HttpClient(new TokenHandler(sp.GetRequiredService<AuthService>()) { InnerHandler = new HttpClientHandler() })
     { BaseAddress = new Uri(apiBase) });
 
-// SyncService replaces this in M6, and only when RequireAuth is on.
-builder.Services.AddSingleton<ISyncTrigger, NoSyncTrigger>();
+// SyncService only runs when RequireAuth is on; otherwise changes stay in the outbox.
+if (features.RequireAuth)
+{
+    builder.Services.AddSingleton<SyncService>();
+    builder.Services.AddSingleton<ISyncTrigger>(sp => sp.GetRequiredService<SyncService>());
+}
+else
+{
+    builder.Services.AddSingleton<ISyncTrigger, NoSyncTrigger>();
+}
 
 var host = builder.Build();
 
@@ -50,5 +58,8 @@ await host.Services.GetRequiredService<ConnectivityService>().InitializeAsync();
 await host.Services.GetRequiredService<PlanService>().PruneAsync();
 
 await host.Services.GetRequiredService<UpdateService>().InitializeAsync();
+
+if (features.RequireAuth)
+    await host.Services.GetRequiredService<SyncService>().StartAsync();
 
 await host.RunAsync();
