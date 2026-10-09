@@ -10,6 +10,11 @@
     z-index: 40;
 }
 
+.banner-stack.has-banners {
+    padding-top: env(safe-area-inset-top);
+    background: var(--surface-2);
+}
+
 .page {
     flex: 1;
     min-width: 0;

@@ -31,3 +31,7 @@
 }
 
 .seg:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Drawn inside a 36px track (ui.md) but tappable at 44px (ui.md › Touch targets). */
+.seg { position: relative; }
+.seg::after { content: ""; position: absolute; inset: -6px 0; }

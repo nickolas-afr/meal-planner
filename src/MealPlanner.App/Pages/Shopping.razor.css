@@ -25,7 +25,8 @@
 .grouphead { display: flex; align-items: center; justify-content: space-between; margin: 0 0 8px 4px; }
 .grouphead .t-section-label { margin: 0; }
 .textbtn {
-    min-height: 32px;
+    min-height: 44px;
+    margin: -6px 0;   /* 44px touch target without growing the label row */
     padding: 0 4px;
     background: transparent;
     border: 0;

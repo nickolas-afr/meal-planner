@@ -76,5 +76,61 @@
         }
     };
 
-    window.mealPlanner = Object.assign(api, { sortable });
+    let swReg = null;
+    let reloading = false;
+    const sw = {
+        // Registers the service worker; dotnetRef.OnUpdateAvailable() is called when a new worker is waiting.
+        async register(dotnetRef) {
+            if (!('serviceWorker' in navigator)) return false;
+            try {
+                const reg = await navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' });
+                swReg = reg;
+                const notify = () => { try { dotnetRef.invokeMethodAsync('OnUpdateAvailable'); } catch (e) { console.warn(e); } };
+                if (reg.waiting && navigator.serviceWorker.controller) notify();
+                reg.addEventListener('updatefound', () => {
+                    const worker = reg.installing;
+                    if (!worker) return;
+                    worker.addEventListener('statechange', () => {
+                        if (worker.state === 'installed' && navigator.serviceWorker.controller) notify();
+                    });
+                });
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    if (reloading) return;
+                    reloading = true;
+                    window.location.reload();
+                });
+                return true;
+            } catch (e) {
+                console.warn('Service worker registration failed', e);
+                return false;
+            }
+        },
+
+        // Checks for a new version; true when a worker is installed and waiting.
+        async checkForUpdate() {
+            if (!swReg) return false;
+            try { await swReg.update(); } catch (e) { console.warn(e); }
+            return !!(swReg.waiting && navigator.serviceWorker.controller);
+        },
+
+        // Activates the waiting worker; the page reloads on controllerchange.
+        skipWaiting() {
+            if (swReg && swReg.waiting) swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            else window.location.reload();
+        }
+    };
+
+    function downloadFile(fileName, contentType, text) {
+        const url = URL.createObjectURL(new Blob([text], { type: contentType }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    window.mealPlanner = Object.assign(api, { sortable, sw, downloadFile });
 })();

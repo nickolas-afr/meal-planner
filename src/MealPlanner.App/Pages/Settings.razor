@@ -3,12 +3,16 @@
 @inject AppState State
 @inject MarketService MarketSvc
 @inject IJSRuntime JS
+@inject BackupService Backup
+@inject PreferencesService Prefs
+@inject UpdateService Updates
+@using System.Globalization
 
 <PageTitle>Settings</PageTitle>
 <NavHeader BackHref="/meals" BackLabel="Meals" Title="Settings" />
 
 <div class="content">
-    @* Later milestones add the Household, Backup and Account sections here. *@
+    @* M5 adds the Household section above Markets and the Account section after App. *@
     <section>
         <h2 class="t-section-label">Markets</h2>
         <div class="card">
@@ -36,7 +40,49 @@
             ? "No markets yet. Everything goes under Anywhere."
             : "Order them the way you shop. Items are grouped by these on the shopping list.")</p>
     </section>
+
+    <section>
+        <h2 class="t-section-label">Backup</h2>
+        <div class="card">
+            <button type="button" class="arow" @onclick="ExportAsync">
+                <span class="tile"><DownloadIcon Size="20" /></span>
+                <span class="atext"><span class="atitle">Export data</span><span class="asub t-secondary">Saves everything as a .json file</span></span>
+            </button>
+            <label class="arow import">
+                <span class="tile"><UploadIcon Size="20" /></span>
+                <span class="atext"><span class="atitle">Import data</span><span class="asub t-secondary">Replaces everything for both of you</span></span>
+                <InputFile @key="_fileInputKey" class="visually-hidden" accept=".json,application/json" OnChange="OnFileChosen" />
+            </label>
+        </div>
+        <FieldError Id="import-err" Message="@_importError" />
+        @if (_imported)
+        {
+            <p class="note t-secondary" role="status">Imported.</p>
+        }
+        <p class="note t-secondary">@LastExportText</p>
+    </section>
+
+    <section>
+        <h2 class="t-section-label">App</h2>
+        <div class="card">
+            <div class="arow static">
+                <span class="atext"><span class="atitle">Version</span></span>
+                <span class="aval">@Updates.Version</span>
+            </div>
+            <button type="button" class="arow" disabled="@_checking" @onclick="CheckAsync">
+                <span class="atext"><span class="atitle">Check for updates</span>
+                    @if (_upToDate)
+                    {
+                        <span class="asub t-secondary" role="status">You're up to date</span>
+                    }
+                </span>
+            </button>
+        </div>
+    </section>
 </div>
+
+<ConfirmDialog Open="_preview is not null" Title="Import data?" Message="@ImportMessage" ConfirmText="Import" Destructive="true"
+               OnConfirm="ImportAsync" OnCancel="@(() => _preview = null)" />
 
 <BottomSheet Open="_editing is not null && !_confirmDelete" Title="Market" ConfirmText="Save"
              ConfirmDisabled="@(EditError is not null || string.IsNullOrWhiteSpace(_editName))"
@@ -52,6 +98,80 @@
                OnConfirm="DeleteAsync" OnCancel="@(() => _confirmDelete = false)" />
 
 @code {
+    private BackupPreview? _preview;
+    private string? _importError;
+    private bool _imported;
+    private int _fileInputKey; // bumped after each pick so choosing the same file again fires a change
+    private bool _checking;
+    private bool _upToDate;
+    private int _checkSeq;
+
+    private string LastExportText => Prefs.LastExportAt is { } t
+        ? "Last export: " + t.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.InvariantCulture)
+        : "Last export: never";
+
+    private string? ImportMessage => _preview is null ? null
+        : $"Import {Count(_preview.Meals, "meal", "meals")}, {Count(_preview.Ingredients, "ingredient", "ingredients")}, {Count(_preview.Markets, "market", "markets")}? This replaces everything for both of you.";
+
+    private static string Count(int n, string one, string many) => $"{n} {(n == 1 ? one : many)}";
+
+    private async Task ExportAsync()
+    {
+        _imported = false;
+        await Backup.ExportAsync();
+        StateHasChanged();
+    }
+
+    private async Task OnFileChosen(InputFileChangeEventArgs e)
+    {
+        _importError = null;
+        _imported = false;
+        _preview = null;
+        try
+        {
+            using var stream = e.File.OpenReadStream(5 * 1024 * 1024);
+            using var reader = new StreamReader(stream);
+            _preview = Backup.Preview(await reader.ReadToEndAsync());
+        }
+        catch (IOException) { }
+        if (_preview is null) _importError = "That file isn't a Meal Planner backup.";
+        _fileInputKey++;
+    }
+
+    private async Task ImportAsync()
+    {
+        var p = _preview;
+        _preview = null;
+        if (p is null) return;
+        await Backup.ImportAsync(p.File);
+        _imported = true;
+    }
+
+    private async Task CheckAsync()
+    {
+        _checking = true;
+        _upToDate = false;
+        var seq = ++_checkSeq;
+        try
+        {
+            var available = await Updates.CheckForUpdatesAsync();
+            if (!available)
+            {
+                _upToDate = true;
+                _ = HideUpToDateAsync(seq);
+            }
+        }
+        finally { _checking = false; }
+    }
+
+    private async Task HideUpToDateAsync(int seq)
+    {
+        await Task.Delay(4000);
+        if (_disposed || seq != _checkSeq) return;
+        _upToDate = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
     private ElementReference _list;
     private Guid _listKey = Guid.NewGuid();
     private DotNetObjectReference<Settings>? _self;

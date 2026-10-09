@@ -1,11 +1,16 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject NavigationManager Nav
+@inject UpdateService Updates
 
 <NavGuard>
     <div class="shell">
-        <div class="banner-stack">
-            @* Banner stack: Offline / Update available / List out of date banners go here (stacked, under the safe area). *@
+        <div class="banner-stack @(HasBanners ? "has-banners" : null)">
+            @* Banner stack: Offline / List out of date banners go here too (stacked, under the safe area). *@
+            @if (Updates.UpdateAvailable)
+            {
+                <Banner Variant="BannerVariant.UpdateAvailable" Text="New version available" ActionText="Reload" OnAction="Updates.ReloadAsync" />
+            }
         </div>
         <main class="page @(ShowTabBar ? "with-tabbar" : null)">
             @Body
@@ -18,6 +23,8 @@
 </NavGuard>
 
 @code {
+    private bool HasBanners => Updates.UpdateAvailable;
+
     private bool ShowTabBar
     {
         get
@@ -27,9 +34,19 @@
         }
     }
 
-    protected override void OnInitialized() => Nav.LocationChanged += OnLocationChanged;
+    protected override void OnInitialized()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        Updates.OnChange += OnUpdatesChanged;
+    }
+
+    private void OnUpdatesChanged() => InvokeAsync(StateHasChanged);
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => InvokeAsync(StateHasChanged);
 
-    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        Updates.OnChange -= OnUpdatesChanged;
+    }
 }

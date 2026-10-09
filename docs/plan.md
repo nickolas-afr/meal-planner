@@ -81,15 +81,15 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
 
 ## M4 · PWA polish and backup
 
-- [ ] `manifest.webmanifest`, app icons:
+- [x] `manifest.webmanifest`, app icons:
   - a simple bowl mark on `#2E7A4B`
   - 192, 512 and maskable 512 PNGs, plus the 180 px `apple-touch-icon`
   - generated from one SVG in `icons/source.svg`
-- [ ] The `index.html` meta tags from architecture.md › PWA, including both theme colors.
-- [ ] Service worker update flow and the "New version available" banner.
-- [ ] `staticwebapp.config.json` as specified.
-- [ ] Settings › Backup (export, import with counts and confirm) and Settings › App (version, check for updates).
-- [ ] Accessibility pass against ui.md › Accessibility.
+- [x] The `index.html` meta tags from architecture.md › PWA, including both theme colors.
+- [x] Service worker update flow and the "New version available" banner.
+- [x] `staticwebapp.config.json` as specified.
+- [x] Settings › Backup (export, import with counts and confirm) and Settings › App (version, check for updates).
+- [x] Accessibility pass against ui.md › Accessibility.
 - [ ] Manual check in Safari's responsive mode at 390 × 844 in both themes.
 
 **Done when:**

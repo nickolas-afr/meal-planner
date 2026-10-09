@@ -264,6 +264,8 @@ On startup and after each sync, `PlanService` prunes old weeks. Every `PlannedMe
   - `apple-mobile-web-app-status-bar-style=default`
   - `apple-touch-icon` 180 px
   - `theme-color` with media queries for light (`#F5F4EF`) and dark (`#121412`)
+- **Icons:** `icons/source.svg` (repo root) is the single source. `icons/build.sh` renders it with macOS built-ins (`qlmanage`, `sips`) into `wwwroot/icons/`: `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` (180) and `favicon-32.png`. Rerun it after editing the SVG.
+- **Offline cache:** `service-worker.published.js` caches `.woff2` as well as the template's types, so Figtree works offline.
 - **`manifest.webmanifest`:** `name` "Meal Planner", `short_name` "Meals", `display` standalone, `start_url` "./", `background_color` `#F5F4EF`, `theme_color` `#2E7A4B`, icons 192 and 512 (plus maskable 512).
 - **`staticwebapp.config.json`:**
   - `navigationFallback.rewrite = "/index.html"`, excluding `/_framework/*`, `/css/*`, `/js/*`, `/fonts/*`, `/icons/*`, `/lib/*`, `*.{json,webmanifest,js,css,woff2,png,svg,wasm,dll,dat,blat}`

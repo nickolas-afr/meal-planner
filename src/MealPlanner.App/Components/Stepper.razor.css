@@ -32,3 +32,7 @@
     text-align: center;
     font-variant-numeric: tabular-nums;
 }
+
+/* Drawn at 36px (ui.md) but tappable at 44px (ui.md › Touch targets). */
+.btn { position: relative; }
+.btn::after { content: ""; position: absolute; inset: -4px; }

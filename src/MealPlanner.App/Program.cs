@@ -21,6 +21,8 @@ builder.Services.AddSingleton<PreferencesService>();
 builder.Services.AddSingleton<MealService>();
 builder.Services.AddSingleton<IngredientService>();
 builder.Services.AddSingleton<MarketService>();
+builder.Services.AddSingleton<UpdateService>();
+builder.Services.AddSingleton<BackupService>();
 builder.Services.AddSingleton<PlanService>();
 builder.Services.AddSingleton<ShoppingService>();
 
@@ -34,5 +36,7 @@ state.Load(await host.Services.GetRequiredService<IStore>().LoadAsync() ?? new A
 await host.Services.GetRequiredService<PreferencesService>().LoadAsync();
 
 await host.Services.GetRequiredService<PlanService>().PruneAsync();
+
+await host.Services.GetRequiredService<UpdateService>().InitializeAsync();
 
 await host.RunAsync();
