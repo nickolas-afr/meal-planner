@@ -486,3 +486,6 @@ $RECYCLE.BIN/
 
 # Original docs bundle (contents live in docs/)
 meal-planner-docs.zip
+
+# Core backup code, not a Visual Studio upgrade backup (overrides Backup*/ above)
+!src/MealPlanner.Core/Backup/
