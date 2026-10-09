@@ -24,12 +24,12 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
 
 ## M1 · Core domain
 
-- [ ] Entities, exactly as in architecture.md › Core data model.
-- [ ] `Units`, `Weeks`, `Ids` (UUIDv5), `QuantityFormat` (`Format`, `TryParse`), `Validation`, `EntityTypes`, and a shared `JsonSerializerOptions`.
-- [ ] `ShoppingListBuilder`: `Build`, `IsOutOfDate`, `Merge`.
-- [ ] `ShoppingListLayout`: `ByMeal`, `ByMarket`, `Progress`.
-- [ ] `BackupFile` record and its (de)serialization.
-- [ ] Tests (Core.Tests), at least:
+- [x] Entities, exactly as in architecture.md › Core data model.
+- [x] `Units`, `Weeks`, `Ids` (UUIDv5), `QuantityFormat` (`Format`, `TryParse`), `Validation`, `EntityTypes`, and a shared `JsonSerializerOptions`.
+- [x] `ShoppingListBuilder`: `Build`, `IsOutOfDate`, `Merge`.
+- [x] `ShoppingListLayout`: `ByMeal`, `ByMarket`, `Progress`.
+- [x] `BackupFile` record and its (de)serialization.
+- [x] Tests (Core.Tests), at least:
   - `Weeks.StartOf` for every weekday; `Weeks.Active` on Thursday vs Friday vs Sunday; `RetentionCutoff`
   - `Ids.ForItem` is deterministic and differs by week and by ingredient; it matches a known UUIDv5 test vector
   - `QuantityFormat.Format`: every example in architecture.md, plus 0.333 → "0.33" and 1000 → "1000"

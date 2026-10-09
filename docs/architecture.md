@@ -140,7 +140,10 @@ Lists are `IReadOnlyList<T>`; services replace them whole (`meal with { Ingredie
   - otherwise the number (invariant culture, at most 2 decimals, trailing zeros dropped), then `" " + unit` when the unit is not empty, then `" +"` when `hasUnspecified`
   - examples: `(500,false,"g")` → `"500 g"`, `(1.5,false,"pc")` → `"1.5 pc"`, `(2,true,"pc")` → `"2 pc +"`, `(null,true,"")` → `""`
 - `QuantityFormat.TryParse(string input, out decimal? value)`: accepts `,` or `.`, enforces the rules in spec › Validation.
-- `Validation`: one static method per rule in spec › Validation, returning an error message or null.
+- `Validation`: one static method per rule in spec › Validation, returning an error message or null. Name rules take the existing entities and the id being edited (`MealName(name, meals, editingId)`), so an entity never clashes with itself. Invite codes are normalized with `NormalizeInviteCode` and must be 8 Crockford base32 characters.
+- `CoreJson.Options`: the shared `JsonSerializerOptions` (`JsonSerializerDefaults.Web`) for storage, sync and backup.
+- `EntityTypes`: the six type names, `Serialize(entity)` and `Deserialize(type, json)` (null for an unknown type or bad JSON).
+- `BackupFile`: `SchemaVersion` (1), `ExportedAt`, and one list per entity type (`Markets`, `Ingredients`, `Meals`, `PlannedMeals`, `ShoppingLists`, `ShoppingItems`). `Create(...)` drops deleted entities; `Serialize()`; `Deserialize(json)` returns null for unreadable files or an unknown schema version; `FileName(date)`.
 
 ### ShoppingListBuilder
 
@@ -179,6 +182,8 @@ A pure function from (list items, markets, meals in plan order, view) to groups 
   - Manual items in an "Extras" group, alphabetical with ticked ones last.
 - **Both views:** staples are removed from the groups and listed in a final "Check you have" group, alphabetical with ticked ones last.
 - `Progress(items)`: `(bought, total)` over live, non-staple items.
+- Output: `ShoppingGroup(Kind, Id, Title, Times, Rows)` with `Kind` one of `Anywhere`, `Market`, `Meal`, `Extras`, `CheckYouHave`, and `ShoppingRow(Item, Quantity, HasUnspecified, MealNames)`. In a meal group a row's quantity is that source's amount and `MealNames` are the other meals ("Also in"); elsewhere it is the item total and every meal that needs it.
+- By meal: meal groups come from the items' sources. A meal in the sources but no longer in the plan (list out of date) is grouped after the planned meals. Alphabetical order is case-insensitive.
 
 ## Client (App)
 
