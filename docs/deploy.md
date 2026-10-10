@@ -41,7 +41,7 @@ Keep the default hostname. A custom domain added later would invalidate every pa
 
 1. Search for **App Services** and choose **Create → Web App**.
 2. Resource group `mealplanner`. Pick a globally unique name, e.g. `mealplanner-api-<yourname>`: this is your **Web App name**.
-3. Publish **Code**, runtime stack **.NET 10 (LTS)**, operating system **Linux**, and a region near you (e.g. **West Europe**). This is the part that runs code and holds the data, so nearby keeps syncs quick.
+3. Publish **Code**, runtime stack **.NET 10 (LTS)**, operating system **Linux**, and a region where your subscription has **F1 quota**. Free accounts often have an F1 limit of 0 in every EU region; the create step then fails with "Current Limit (F1 VMs): 0". Check **Quotas → App Service** in the portal and pick a region with a limit of 1 or more. This household uses a US region (e.g. **East US 2**): syncs from Europe gain about 100 ms, which isn't noticeable, and the meal and shopping data is stored there.
 4. **Pricing plan:** create a new Linux plan and pick **Free F1**.
 5. Leave the other tabs at their defaults (no database, no Application Insights is fine). **Review + create**, then **Create**, then **Go to resource**.
 6. On **Overview**, copy the **Default domain**: that is your **Web App default domain**.

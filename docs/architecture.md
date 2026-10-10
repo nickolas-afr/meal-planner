@@ -385,7 +385,7 @@ CORS allows only the configured origins, methods `GET` and `POST`, and headers `
 | Piece | Service | Notes |
 | --- | --- | --- |
 | PWA | Azure Static Web Apps, Free plan | Deployed from GitHub Actions with a deployment token. Turn off pull-request preview environments (passkeys only work on the production hostname). |
-| API | Azure App Service, F1 Free, Linux, .NET 10 | If the portal doesn't offer a .NET 10 stack, publish self-contained for `linux-x64`. F1 sleeps after about 20 min idle and has a daily CPU quota (about 60 min); two people use far less. |
+| API | Azure App Service, F1 Free, Linux, .NET 10 | Hosted in a US region: the owner's free subscription has no F1 quota in any EU region (decided 2026-10-10; Basic B1 in the EU, about $13/month, is the fallback). If the portal doesn't offer a .NET 10 stack, publish self-contained for `linux-x64`. F1 sleeps after about 20 min idle and has a daily CPU quota (about 60 min); two people use far less. |
 | Database | SQLite file on the App Service `/home` share | Covered by Export in Settings. There are no automatic backups on F1. |
 | CI | GitHub Actions | `ci.yml` builds and tests on every push and PR. `deploy.yml` runs on push to `main`: publish App → `Azure/static-web-apps-deploy` (`skip_app_build: true`, `app_location` = publish `wwwroot`); publish Api → `azure/webapps-deploy`. |
 
