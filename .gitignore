@@ -481,8 +481,9 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-# Project-local tools (SDK, NuGet cache)
-.tools/
+# Project-local tools (SDK, NuGet cache, gh, dotnet-ef); only the env script is tracked
+.tools/*
+!.tools/env.sh
 
 # Original docs bundle (contents live in docs/)
 meal-planner-docs.zip
