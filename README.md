@@ -87,15 +87,12 @@ App icons: edit `icons/source.svg`, then run `icons/build.sh` (macOS built-ins o
 
 ## Deployment
 
-- **PWA:** Azure Static Web Apps, Free plan.
-- **API:** Azure App Service, F1 Free (Windows), with SQLite on the app's persistent `D:\home` storage.
+- **PWA:** Azure Static Web Apps.
+- **API:** Azure App Service, with SQLite on the app's persistent `D:\home` storage.
 - **CI/CD:** every push to `main` runs [`deploy.yml`](.github/workflows/deploy.yml), which builds, tests and publishes both parts. It needs three repository secrets: `AZURE_STATIC_WEB_APPS_API_TOKEN`, `AZURE_WEBAPP_NAME` and `AZURE_WEBAPP_PUBLISH_PROFILE`.
 - **Setup and settings:** the full Azure setup, the API's app settings (JWT key, relying party, origins) and closing sign-ups after everyone has joined are in [`docs/deploy.md`](docs/deploy.md).
 
 ## Operations
 
-- **Costs:** everything runs on free tiers. Keep the App Service plan on Free (F1) and the Static Web App on Free, and keep a $1 budget alert in Cost Management as a safety net.
-- **Sign-ups:** creating new households is turned off in production (`Auth__AllowNewHouseholds = false`). Members sign in with their passkeys; new people join with an invite code.
-- **Backups:** F1 has no automatic backups. Use **Settings › Export data** in the app now and then.
 - **Sleep:** the free API sleeps after about 20 minutes idle. The app wakes it on open, so the first sync after a pause just takes a little longer.
 - **Monitoring:** Web App → Overview charts, Monitoring → Metrics and Log stream.
