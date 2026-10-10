@@ -140,7 +140,7 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
   - app settings from architecture.md › Configuration, with a freshly generated JWT key
   - SCM basic-auth publishing enabled; download the publish profile
   - the GitHub secrets
-- [ ] `.github/workflows/deploy.yml` (architecture.md › Hosting and deployment). Set `wwwroot/appsettings.Production.json` `ApiBaseUrl` to the Web App URL.
+- [x] `.github/workflows/deploy.yml` (architecture.md › Hosting and deployment). Set `wwwroot/appsettings.Production.json` `ApiBaseUrl` to the Web App URL.
 - [ ] Smoke test on both iPhones:
   1. install from Safari
   2. create the household and join it
