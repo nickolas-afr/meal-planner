@@ -3,14 +3,16 @@ using System.Text.Json;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 using MealPlanner.Api.Data;
+using MealPlanner.Api.Options;
 using MealPlanner.Core;
 using MealPlanner.Core.Auth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 
 namespace MealPlanner.Api.Auth;
 
-public sealed class PasskeyService(IFido2 fido2, IMemoryCache cache, AppDb db, TokenService tokens)
+public sealed class PasskeyService(IFido2 fido2, IMemoryCache cache, AppDb db, TokenService tokens, IOptions<AuthOptions> authOptions)
 {
     public const int MaxMembers = 4;
     private static readonly TimeSpan FlowLifetime = TimeSpan.FromMinutes(5);
@@ -27,6 +29,8 @@ public sealed class PasskeyService(IFido2 fido2, IMemoryCache cache, AppDb db, T
         string name = request.DisplayName.Trim();
 
         string? code = null;
+        if (string.IsNullOrWhiteSpace(request.InviteCode) && !authOptions.Value.AllowNewHouseholds)
+            throw new ApiException(403, AuthErrors.SignupsClosed);
         if (!string.IsNullOrWhiteSpace(request.InviteCode))
         {
             code = Validation.NormalizeInviteCode(request.InviteCode);
@@ -78,6 +82,8 @@ public sealed class PasskeyService(IFido2 fido2, IMemoryCache cache, AppDb db, T
         Invite? invite = null;
         if (pending.InviteCode is null)
         {
+            if (!authOptions.Value.AllowNewHouseholds)
+                throw new ApiException(403, AuthErrors.SignupsClosed);
             household = new Household { Id = Guid.NewGuid(), Name = $"{pending.DisplayName}'s household", CreatedAt = now };
             db.Households.Add(household);
         }

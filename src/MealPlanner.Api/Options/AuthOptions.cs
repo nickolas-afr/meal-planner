@@ -11,6 +11,9 @@ public sealed class AuthOptions
     public int AccessTokenMinutes { get; set; } = 15;
     public int RefreshTokenDays { get; set; } = 180;
 
+    /// <summary>False: registering without an invite (a new household) is refused; joining with an invite and signing in still work.</summary>
+    public bool AllowNewHouseholds { get; set; } = true;
+
     /// <summary>True when the key is valid base64 of at least 32 bytes (HMAC-SHA256 needs 256 bits).</summary>
     public static bool IsValidJwtKey(string? key)
     {

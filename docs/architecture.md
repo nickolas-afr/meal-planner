@@ -296,7 +296,7 @@ All endpoints are under `/api` and use JSON. Everything except `auth/*` and `hea
 | --- | --- | --- |
 | `GET health` | → `200 "ok"` | The client calls it on app start to wake the server. |
 | `POST auth/register/begin` | `{ displayName, inviteCode? }` → `{ flowId, options }` | `options` is the WebAuthn `PublicKeyCredentialCreationOptions` (resident key required, user verification required). An invalid or expired invite returns 400 `{ error: "invite_invalid" }`. |
-| `POST auth/register/complete` | `{ flowId, attestation }` → `TokenPair` | Creates the user and passkey. With no invite, it also creates a household named "{displayName}'s household". With an invite, it joins that household (409 `household_full` at 4 members) and marks the invite used. |
+| `POST auth/register/complete` | `{ flowId, attestation }` → `TokenPair` | Creates the user and passkey. With no invite, it also creates a household named "{displayName}'s household", unless `Auth:AllowNewHouseholds` is false: then begin and complete return 403 `signups_closed`. With an invite, it joins that household (409 `household_full` at 4 members) and marks the invite used. |
 | `POST auth/login/begin` | `{}` → `{ flowId, options }` | Discoverable credential: empty `allowCredentials`. |
 | `POST auth/login/complete` | `{ flowId, assertion }` → `TokenPair` | Verifies the assertion, updates `SignCount` and `LastUsedAt`. |
 | `POST auth/refresh` | `{ refreshToken }` → `TokenPair` | Rotates: revokes the old token and issues a new one. |
@@ -371,6 +371,7 @@ The response includes the caller's own just-applied changes, so the client learn
 | `Auth__RpId` | `localhost` | PWA hostname |
 | `Auth__Origins__0` | `https://localhost:7002` | `https://<PWA hostname>` |
 | `Cors__Origins__0` | `https://localhost:7002` | `https://<PWA hostname>` |
+| `Auth__AllowNewHouseholds` | (unset = true) | `false` once both phones have joined |
 
 **On startup:**
 

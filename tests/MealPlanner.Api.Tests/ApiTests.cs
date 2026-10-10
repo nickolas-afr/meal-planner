@@ -227,4 +227,20 @@ public sealed class ApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
         Assert.Equal("household_full", await ErrorOf(r));
     }
+
+    [Fact]
+    public async Task With_signups_closed_new_households_are_refused_but_invites_still_work()
+    {
+        var user = await factory.CreateHousehold(1);
+        string code = await NewInvite(user);
+        using var closed = factory.WithWebHostBuilder(b => b.UseSetting("Auth:AllowNewHouseholds", "false"));
+        var client = closed.CreateClient();
+
+        var refused = await Begin(client, null);
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        Assert.Equal("signups_closed", await ErrorOf(refused));
+
+        Assert.Equal(HttpStatusCode.OK, (await Begin(client, code)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/auth/login/begin", new { })).StatusCode);
+    }
 }

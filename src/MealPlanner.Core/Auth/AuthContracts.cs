@@ -44,4 +44,5 @@ public static class AuthErrors
     public const string PasskeyFailed = "passkey_failed";
     public const string FlowExpired = "flow_expired";
     public const string InvalidToken = "invalid_token";
+    public const string SignupsClosed = "signups_closed";
 }

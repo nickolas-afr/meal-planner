@@ -95,6 +95,10 @@ Until all three secrets exist, the Deploy workflow skips its steps and stays gre
 2. Open `https://<PWA hostname>` on an iPhone in Safari. The Welcome screen should appear.
 3. Continue with the smoke test in plan.md › M7.
 
+## 9. Close sign-ups
+
+Once everyone has joined the household, add one more app setting to the Web App: `Auth__AllowNewHouseholds` = `false`, then **Apply** and **Confirm**. Nobody else can then create a household with your API; members can still sign in, and invites still work. Set it back to `true` (or delete it) if you ever need a new household.
+
 ## Later
 
 - **Data:** there are no automatic backups on F1. Use **Settings › Export data** in the app now and then.

@@ -104,6 +104,7 @@ Meal Planner keeps a household's library of meals, lets either person pick the m
 - On a new phone, **Sign in** uses the existing passkey (iCloud Keychain syncs passkeys between a person's Apple devices).
 - If someone loses access to their passkey, another member makes a new invite and they join again as a new member. The household's data is not lost.
 - Creating, joining and signing in need a connection. Everything else works offline.
+- Once everyone has joined, the owner turns off creating new households on the server (`Auth__AllowNewHouseholds = false`). Then "Create a household" fails with "New households can't be created here. Ask a member for an invite code."; joining with an invite and signing in still work. Turned off for this household on 2026-10-10.
 - A session lasts until **Sign out**. You are not asked for Face ID on every open.
 
 ## Sync and offline

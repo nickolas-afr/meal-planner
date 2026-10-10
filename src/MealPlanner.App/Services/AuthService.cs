@@ -252,6 +252,7 @@ public sealed class AuthService
         {
             AuthErrors.InviteInvalid => "This code is wrong or has expired. Ask for a new one.",
             AuthErrors.HouseholdFull => "This household is full.",
+            AuthErrors.SignupsClosed => "New households can't be created here. Ask a member for an invite code.",
             _ => "Something went wrong. Try again."
         };
     }
