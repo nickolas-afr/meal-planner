@@ -496,3 +496,6 @@ src/MealPlanner.Api/*.db
 src/MealPlanner.Api/*.db-shm
 src/MealPlanner.Api/*.db-wal
 src/MealPlanner.Api/*.db-journal
+
+# Claude Code instructions: local only, never committed
+CLAUDE.md

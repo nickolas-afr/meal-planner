@@ -27,7 +27,6 @@ Out of scope on purpose: servings and scaling, unit conversion, photos, tags, re
 | [`docs/ui.md`](docs/ui.md) | Design tokens, components and every screen. |
 | [`docs/plan.md`](docs/plan.md) | Milestones M0–M7 and their checks. |
 | [`docs/deploy.md`](docs/deploy.md) | One-time Azure setup and day-to-day operations. |
-| [`CLAUDE.md`](CLAUDE.md) | Working rules for Claude Code in this repo. |
 
 If code and docs disagree, the docs win.
 
