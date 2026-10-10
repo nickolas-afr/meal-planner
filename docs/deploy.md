@@ -80,14 +80,15 @@ In GitHub, open the repository → **Settings → Secrets and variables → Acti
 | `AZURE_STATIC_WEB_APPS_API_TOKEN` | the deployment token from step 2 |
 | `AZURE_WEBAPP_NAME` | the Web App name from step 3 |
 | `AZURE_WEBAPP_PUBLISH_PROFILE` | the whole contents of the publish profile file from step 5 |
+| `API_BASE_URL` | `https://` + the Web App default domain from step 3 (kept out of the repository; the workflow writes it into `appsettings.Production.json` at deploy time) |
 
 Then delete the downloaded publish profile file.
 
-## 7. Point the app at the API
+## 7. First deployment
 
-Give Claude the **Web App default domain**. Claude sets it as `ApiBaseUrl` in `src/MealPlanner.App/wwwroot/appsettings.Production.json` and pushes to `main`. That push runs the first deployment (GitHub → **Actions → Deploy**).
+Push to `main` (or run **Actions → Deploy → Run workflow**). The workflow writes `API_BASE_URL` into `appsettings.Production.json` before publishing; the committed file only holds a placeholder.
 
-Until all three secrets exist, the Deploy workflow skips its steps and stays green.
+Until all four secrets exist, the Deploy workflow skips its steps and stays green.
 
 ## 8. Check it
 

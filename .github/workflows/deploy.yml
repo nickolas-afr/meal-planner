@@ -15,11 +15,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      HAS_SECRETS: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN != '' && secrets.AZURE_WEBAPP_NAME != '' && secrets.AZURE_WEBAPP_PUBLISH_PROFILE != '' }}
+      HAS_SECRETS: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN != '' && secrets.AZURE_WEBAPP_NAME != '' && secrets.AZURE_WEBAPP_PUBLISH_PROFILE != '' && secrets.API_BASE_URL != '' }}
     steps:
       - name: Skip until Azure is set up
         if: env.HAS_SECRETS != 'true'
-        run: echo "::notice::Deploy skipped – add the three Azure secrets (docs/deploy.md, step 6)."
+        run: echo "::notice::Deploy skipped – add the four deploy secrets (docs/deploy.md, step 6)."
 
       - uses: actions/checkout@v5
         if: env.HAS_SECRETS == 'true'
@@ -34,6 +34,14 @@ jobs:
         run: |
           dotnet build MealPlanner.sln -warnaserror
           dotnet test MealPlanner.sln --no-build
+
+      # The API address is kept out of the repository; it comes from the API_BASE_URL secret.
+      - name: Set the API address
+        if: env.HAS_SECRETS == 'true'
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          printf '{ "ApiBaseUrl": "%s" }\n' "$API_BASE_URL" > src/MealPlanner.App/wwwroot/appsettings.Production.json
 
       - name: Publish App
         if: env.HAS_SECRETS == 'true'

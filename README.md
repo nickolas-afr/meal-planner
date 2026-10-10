@@ -89,7 +89,7 @@ App icons: edit `icons/source.svg`, then run `icons/build.sh` (macOS built-ins o
 
 - **PWA:** Azure Static Web Apps.
 - **API:** Azure App Service, with SQLite on the app's persistent `D:\home` storage.
-- **CI/CD:** every push to `main` runs [`deploy.yml`](.github/workflows/deploy.yml), which builds, tests and publishes both parts. It needs three repository secrets: `AZURE_STATIC_WEB_APPS_API_TOKEN`, `AZURE_WEBAPP_NAME` and `AZURE_WEBAPP_PUBLISH_PROFILE`.
+- **CI/CD:** every push to `main` runs [`deploy.yml`](.github/workflows/deploy.yml), which builds, tests and publishes both parts. It needs four repository secrets: `AZURE_STATIC_WEB_APPS_API_TOKEN`, `AZURE_WEBAPP_NAME`, `AZURE_WEBAPP_PUBLISH_PROFILE` and `API_BASE_URL`.
 - **Setup and settings:** the full Azure setup, the API's app settings (JWT key, relying party, origins) and closing sign-ups after everyone has joined are in [`docs/deploy.md`](docs/deploy.md).
 
 ## Operations
