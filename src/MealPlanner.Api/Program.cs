@@ -14,7 +14,12 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.Section));
+builder.Services.AddOptions<AuthOptions>()
+    .Bind(builder.Configuration.GetSection(AuthOptions.Section))
+    .Validate(o => AuthOptions.IsValidJwtKey(o.JwtKey), "Auth:JwtKey must be base64 for at least 32 random bytes (openssl rand -base64 64).")
+    .Validate(o => !string.IsNullOrWhiteSpace(o.RpId), "Auth:RpId must be set to the PWA hostname.")
+    .Validate(o => o.Origins.Length > 0, "Auth:Origins must list the PWA origin.")
+    .ValidateOnStart(); // fail at startup with a clear message instead of a bare 500 on every request
 builder.Services.Configure<MealPlanner.Api.Options.CorsOptions>(builder.Configuration.GetSection(CorsOptions.Section));
 
 builder.Services.AddDbContext<AppDb>(o => o.UseSqlite(builder.Configuration.GetConnectionString("Db")));

@@ -46,6 +46,8 @@ Keep the default hostname. A custom domain added later would invalidate every pa
 5. Leave the other tabs at their defaults (no database, no Application Insights is fine). **Review + create**, then **Create**, then **Go to resource**.
 6. On **Overview**, copy the **Default domain**: that is your **Web App default domain**.
 
+If **Linux** has no F1 quota but **Windows** does, a Windows F1 Web App works too (this household's API runs on Windows F1 in Central US); use the Windows connection string in step 4.
+
 If the portal doesn't offer a .NET 10 stack, stop and tell Claude: the workflow then has to publish self-contained for `linux-x64` (architecture.md › Hosting and deployment).
 
 ## 4. App Service settings
@@ -54,13 +56,13 @@ In the Web App, open **Settings → Environment variables → App settings** and
 
 | Name | Value |
 | --- | --- |
-| `ConnectionStrings__Db` | `Data Source=/home/data/mealplanner.db` |
-| `Auth__JwtKey` | a fresh key: run `openssl rand -base64 64 \| tr -d '\n'` in Terminal and paste the output |
+| `ConnectionStrings__Db` | Linux: `Data Source=/home/data/mealplanner.db`. Windows: `Data Source=D:\home\data\mealplanner.db` |
+| `Auth__JwtKey` | a fresh key: run `openssl rand -base64 64 \| tr -d '\n' \| pbcopy` in Terminal (nothing is printed) and paste it |
 | `Auth__RpId` | your PWA hostname, e.g. `polite-river-0a1b2c3d4.azurestaticapps.net` |
 | `Auth__Origins__0` | `https://` + your PWA hostname |
 | `Cors__Origins__0` | `https://` + your PWA hostname |
 
-**Apply**, then **Confirm**: the app restarts. Never reuse the development key from `appsettings.Development.json`, and don't paste the production key anywhere else.
+**Apply**, then **Confirm**: the app restarts. Re-open the list and check that all five are there: the portal sometimes drops values that were added but not applied. If a setting is missing or the key is malformed, the API refuses to start and the log stream names the setting. Never reuse the development key from `appsettings.Development.json`, and don't paste the production key anywhere else.
 
 The API creates `/home/data` and the database on first start, and runs its migrations by itself.
 
