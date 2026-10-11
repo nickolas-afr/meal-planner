@@ -13,10 +13,10 @@ Meal Planner keeps a household's library of meals, lets either person pick the m
 | Term | Meaning |
 | --- | --- |
 | Meal | A named dish with an ingredient list and optional notes. Always cooked for 2; there is no servings count. |
-| Ingredient | Something you buy, with one unit, an optional default market and a staple flag. |
+| Ingredient | Something you buy, with one unit, the markets that sell it (in priority order) and a staple flag. |
 | Market | A shop where you buy things (e.g. "Lidl", "Butcher"). Has a manual order of its items. |
-| Anywhere | The pseudo-market for ingredients with no market set. Not stored as a market. |
-| Staple | An ingredient you normally have at home (salt, oil, rice). Never listed for buying; shown in "Check you have". |
+| Anywhere | The pseudo-market for ingredients with no markets set. Not stored as a market. |
+| Staple | An ingredient you normally have at home (salt, oil, rice). Not listed for buying unless you mark it "Need to buy"; shown in "Check you have". |
 | Week | Monday to Sunday, in the phone's local time zone. Identified by its Monday (`WeekStart`). |
 | Plan | The meals planned for one week. A meal planned twice counts twice. |
 | Shopping list | One per week, generated from that week's plan, then ticked off and adjusted. |
@@ -33,7 +33,7 @@ Meal Planner keeps a household's library of meals, lets either person pick the m
 
 ## Ingredients and units
 
-- An ingredient has a **name** (required, unique within the household, case-insensitive), a **unit**, a **default market** (optional; none means Anywhere) and a **staple** flag.
+- An ingredient has a **name** (required, unique within the household, case-insensitive), a **unit**, its **markets** (zero or more, in priority order: the first is where you prefer to buy it; none means Anywhere) and a **staple** flag.
 - The unit is picked from a fixed list: none, g, kg, ml, l, pc, clove, tsp, tbsp, cup, tin, pack, bunch, slice.
 - All quantities for an ingredient are in its one unit, so totals are plain sums. There is no conversion.
 - The unit cannot be changed while any meal uses the ingredient (the picker is shown locked, with the reason).
@@ -42,8 +42,8 @@ Meal Planner keeps a household's library of meals, lets either person pick the m
 ## Markets
 
 - Markets are an editable list in Settings: add, rename, reorder (drag) and delete.
-- Each ingredient has at most one default market. Ingredients with none belong to Anywhere.
-- Deleting a market moves its ingredients to Anywhere (they keep their names and units). Items on existing shopping lists that were in that market also show under Anywhere.
+- An ingredient can be sold by several markets, kept in priority order. Ingredients with none belong to Anywhere.
+- Deleting a market removes it from every ingredient's markets; an ingredient left with none moves to Anywhere (it keeps its name and unit). Items on existing shopping lists that were in that market also show under Anywhere.
 - Each market keeps a **manual item order**, set by dragging items in the shopping list's "By market" view. The order is stored per market and reused every week.
 
 ## Weeks and planning
@@ -74,12 +74,25 @@ Meal Planner keeps a household's library of meals, lets either person pick the m
   - A per-week market move (below) is kept.
 - The list never changes on its own; only Update changes it.
 
+### Choosing markets
+
+When the list is created or updated, the app picks the markets for the week so you visit as few as possible:
+
+- It picks the **smallest set of markets** that sells every item you need to buy. If one market sells everything, the whole list goes to that market.
+- Items you've already placed stay where they are and their markets are always included: manual items, items moved with **Move to market…**, staples marked **Need to buy**, and, on Update, ticked items.
+- **Staples are ignored** when choosing, so a staple never adds a market. Items with no markets (Anywhere) don't need one either.
+- If several sets are equally small, it prefers the one that puts more items at their first-priority market, then the earlier markets in Settings order.
+- Each item then goes to its highest-priority market in the chosen set.
+- On **Update**, unticked items may move to a different market if the best choice changed; ticked items never move.
+- The Shopping header shows the chosen markets, e.g. "Lidl + Butcher".
+
 ### What an item shows
 
 - Each ingredient appears once, with its total: the sum of the quantities from every planned meal entry that uses it.
 - Totals are exact sums, with no rounding: "1.5 pc", "750 g". At most 2 decimals, trailing zeros dropped, "." as the separator.
 - If every source quantity is blank, no amount is shown. If some are blank and some are not, the known sum is shown followed by " +" (e.g. "2 pc +").
 - Staple ingredients are not in the main groups. They sit in a collapsed **Check you have** section at the bottom, which can also be ticked.
+- If you're out of a staple, **Need to buy** (in its "⋯" sheet) moves it into the list like any other item. It goes to one of the week's chosen markets if one sells it; only if none does is its own first market added. **Don't need** moves it back to Check you have.
 
 ### Views
 
@@ -87,13 +100,14 @@ Meal Planner keeps a household's library of meals, lets either person pick the m
 - **By meal:** one group per planned meal, in the order the meals were first added to the week. A meal planned twice shows once, with "×2" and doubled amounts. Each row shows the amount needed for that meal. An ingredient used by several meals appears under each one, with "Also in: …", and ticking it in one place ticks it everywhere. Manual items are in an **Extras** group after the meals.
 - **By market:** Anywhere first, then markets in their Settings order; empty groups are hidden. Each row shows the total and, underneath, the meal names that need it. Items follow the market's manual order; items not yet in that order follow alphabetically. Anywhere is always alphabetical and cannot be reordered.
 - In both views, ticking an item **immediately moves it to the bottom of its group**, dimmed and struck through. Ticked items are ordered by the time they were ticked. Unticking returns an item to its normal place.
-- The header shows the week and progress: "3 of 12 bought". Staples are not counted.
+- The header shows the week and progress: "3 of 12 bought". Staples are not counted unless marked Need to buy.
 
 ### Changing items on the list
 
 - Tapping a row ticks or unticks it.
 - Each row has a "⋯" button that opens a sheet:
-  - **Move to market…** (all items): moves the item to another market, or Anywhere, for this week only. The ingredient's default market does not change.
+  - **Move to market…** (all items): moves the item to another market, or Anywhere, for this week only. The ingredient's markets do not change.
+  - **Need to buy** / **Don't need** (staples only): see What an item shows.
   - **Edit** and **Delete** (manual items only).
 - **+ Item** adds a manual item: name (required), quantity (optional), unit (from the unit list) and market (default Anywhere). Manual items are part of the week's list and belong to no meal.
 
@@ -125,7 +139,7 @@ Meal Planner keeps a household's library of meals, lets either person pick the m
 | --- | --- |
 | Delete a meal | Asks to confirm. If the meal is planned in the current week or a future week, the dialog says so ("It's planned in 2 weeks; it will be removed from those plans.") and removes those plan entries. Past weeks are untouched. Affected shopping lists then show the update banner. |
 | Delete an ingredient | Not allowed while any meal uses it. The sheet lists the meals that use it instead. Shopping items already on lists stay. |
-| Delete a market | Asks to confirm ("Items from Lidl will move to Anywhere."). |
+| Delete a market | Asks to confirm ("Lidl will be removed from its ingredients; items only sold there move to Anywhere."). |
 | Remove a meal from a plan | Stepper minus at count 1. No confirm. |
 | Delete a manual item | From its "⋯" sheet. No confirm. |
 | Leave the meal editor with unsaved changes | Asks "Discard changes?" with Discard and Keep editing. |
@@ -154,7 +168,7 @@ If two phones create the same ingredient name offline, both copies survive the s
 
 ## Backup
 
-- **Settings › Export data** downloads `meal-planner-backup-YYYY-MM-DD.json`, containing every non-deleted entity and a schema version.
+- **Settings › Export data** downloads `meal-planner-backup-YYYY-MM-DD.json`, containing every non-deleted entity and a schema version. Backups made before ingredients had several markets (schema 1) still import.
 - **Settings › Import data** reads such a file, shows "Import 24 meals, 61 ingredients, 3 markets? This replaces everything for both of you.", and on confirm replaces the household's data. The change syncs to the other phone like any other.
 
 ## Defaults chosen without asking (confirm or change)

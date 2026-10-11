@@ -152,3 +152,38 @@ Tick each box when the task is done. If a task turns out wrong or incomplete, up
   8. export a backup
 
 **Done when:** both phones run the installed app from the production URL and every smoke test step passes.
+
+## M8 · Several markets per ingredient, fewest markets per trip
+
+Requested by the owner after go-live (2026-10-11). Rules in spec.md › Markets, Choosing markets and What an item shows; design in architecture.md › MarketChooser.
+
+- [ ] Core:
+  - `Ingredient.MarketIds` (priority order) with `DefaultMarketId` kept for older data; `IngredientMarkets.Of`
+  - `ShoppingItem.IsNeeded`
+  - `MarketChooser` (`Choose`, `Assign`)
+  - `ShoppingListBuilder` (`Build` takes markets and the existing list; `IsOutOfDate` and `Merge` keep pinned items' markets and `IsNeeded`)
+  - `ShoppingListLayout` (needed staples in the groups; `Progress`; `ChosenMarkets`)
+  - `BackupFile` schema 2, still importing schema 1
+- [ ] Core.Tests, at least:
+  - `IngredientMarkets`: MarketIds, legacy DefaultMarketId, empty
+  - `Choose`: one market sells everything → one market; two needed; fewest beats priority; priority breaks ties; Settings order breaks the rest; deleted markets ignored; staples and Anywhere items never add a market; pinned (manual, moved, needed, ticked) markets always included; greedy fallback above 12 markets
+  - `Assign`: highest-priority chosen market; staple not sold at a chosen market → its first market
+  - `Build`/`Merge` on Update: unticked items move when the choice changes, ticked items don't; `IsNeeded` survives
+  - `IsOutOfDate`: a changed market choice for an unpinned item → true; for a ticked item → false
+  - `Layout`: needed staple in its market group with a badge, counted in `Progress`; `ChosenMarkets`
+  - Backup schema 1 import
+- [ ] App:
+  - `IngredientDraft.MarketIds`; `IngredientService` validates (live, no duplicates) and writes both fields
+  - `MarketService.Delete` removes the market from ingredients
+  - `ShoppingService.SetNeeded`; `CreateOrUpdate` passes markets and the existing list to `Build`
+  - Ingredient sheet: Markets list with priority, drag to reorder, add and remove
+  - Ingredients page and meal editor rows: first market (+N), "Also at …"
+  - Shopping: chosen markets in the header; Need to buy / Don't need in the "⋯" sheet
+- [ ] Sync check: data written by the new version loads on a phone still on the old one (first market shown), and old data loads on the new one.
+
+**Done when:**
+
+- A plan whose ingredients are all sold at one market gets a one-market list.
+- A staple sold only at another market never adds that market, until it's marked Need to buy.
+- Ticked items stay put through Update.
+- Both phones show the same list after syncing.

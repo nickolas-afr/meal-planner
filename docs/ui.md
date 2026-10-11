@@ -186,7 +186,7 @@ Offline: the buttons are disabled and a line reads "Connect to the internet to g
 - **Ingredients section:**
   - Header row: "Ingredients" (20/800) with the count in `--text-2`, and a secondary pill **Add** (Plus) on the right.
   - A card with one row per ingredient, in the order added. Each row:
-    - name (16/600), with the market name or "Anywhere" in 13 `--text-2` below
+    - name (16/600), with its first market (plus " +1", " +2"… when it has more) or "Anywhere" in 13 `--text-2` below
     - a **Staple** badge if staple
     - a quantity input box: 40 px tall, `inputmode="decimal"`, right-aligned, placeholder "–", with the unit shown read-only to its right (fixed 44 px slot, empty when there is no unit)
     - a MinusCircle remove button (44 px, `--text-2`, `aria-label` "Remove {name}"), which removes the row without confirm
@@ -204,16 +204,19 @@ Offline: the buttons are disabled and a line reads "Connect to the internet to g
 
 - `LargeTitleHeader`: right pill **New** → ingredient sheet (empty). Title **Ingredients**.
 - `SearchField` "Search ingredients".
-- Groups by default market: **Anywhere** first, then markets in Settings order. Empty groups are hidden. Each group has a section label and a card.
+- Groups by first-priority market: **Anywhere** first, then markets in Settings order. Empty groups are hidden. Each group has a section label and a card.
 - Each row (48 px):
-  - name (16/500) on the left
+  - name (16/500) on the left; when the ingredient has more markets, "Also at {Market B}, {Market C}" in 13 `--text-2` below
   - on the right: a **Staple** badge if staple, then the unit in `--text-2`
   - tapping a row opens the ingredient sheet
 - **Ingredient sheet** (BottomSheet, title "New ingredient" or "Edit ingredient", Done disabled until valid):
   - **Name**
-  - **Unit** and **Market** side by side in a 2-column grid
-    - Unit: a Picker of `Units.All`, where "" shows as "None". Locked when the ingredient is used: greyed, with a Lock icon and the note "Unit is locked while {Meal A}, {Meal B} use this ingredient."
-    - Market: a Picker with "Anywhere" plus the markets.
+  - **Unit**: a Picker of `Units.All`, where "" shows as "None". Locked when the ingredient is used: greyed, with a Lock icon and the note "Unit is locked while {Meal A}, {Meal B} use this ingredient."
+  - **Markets** (label, with the note "In order of preference" in 13 `--text-2`):
+    - A card listing the chosen markets in priority order. Each row: a priority number (1, 2…), the market name, a DragHandle to reorder (SortableJS), and a MinusCircle remove button (`aria-label` "Remove {market}").
+    - Below it, an **Add market** Picker listing the markets not yet chosen; picking one appends it.
+    - With none chosen, the card shows "Anywhere".
+    - With no markets in Settings at all, the section shows "No markets yet. Add them in Settings." instead.
   - **Pantry staple** Toggle, with the subtitle "Listed under "Check you have" instead"
   - For existing ingredients, a **Delete** button:
     - disabled with the label "Delete · used by {n} meals" when used
@@ -250,6 +253,7 @@ Offline: the buttons are disabled and a line reads "Connect to the internet to g
 - **Title area:**
   - title **Shopping**
   - a row with the week name ("This week · 3 meals") on the left and "{bought} of {total} bought" (600) on the right
+  - below it, the week's chosen markets from `ShoppingListLayout.ChosenMarkets`, e.g. "Lidl + Butcher" (13 `--text-2`); hidden when everything is under Anywhere
   - a 6 px progress bar (`--border` track, `--accent` fill)
   - The week name is a button that opens an ActionSheet of the retained weeks that have a list.
 - **List out of date banner** at the top of the page when `IsOutOfDate`.
@@ -266,8 +270,9 @@ Offline: the buttons are disabled and a line reads "Connect to the internet to g
 - **Check you have** (both views):
   - A dashed-border button row: Staple badge, "Check you have", subtitle "{n} staples", and a ChevronDown.
   - Collapsed by default; expanding it shows its `CheckRow`s.
+  - A staple marked **Need to buy** leaves this section and shows in the normal groups, with a **Staple** badge next to its name.
 - **Ticking:** a row moves to the bottom of its group at once, with a 150 ms height and opacity transition (none when `prefers-reduced-motion` is set).
-- **"⋯" ActionSheet:** **Move to market…** (opens a second ActionSheet: Anywhere, then markets, current one checked). For manual items it also offers **Edit** and **Delete**.
+- **"⋯" ActionSheet:** **Move to market…** (opens a second ActionSheet: Anywhere, then markets, current one checked). For staples it also offers **Need to buy** (in Check you have) or **Don't need** (when already needed). For manual items it also offers **Edit** and **Delete**.
 - **Add or edit item sheet** (BottomSheet, title "Add item" or "Edit item"):
   - Name (required)
   - Quantity (optional) and Unit (Picker) in two columns

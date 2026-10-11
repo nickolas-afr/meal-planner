@@ -83,7 +83,8 @@ public sealed record Ingredient : Entity
 {
     public required string Name { get; init; }
     public string Unit { get; init; } = "";        // one of Units.All; "" = no unit
-    public Guid? DefaultMarketId { get; init; }    // null = Anywhere
+    public IReadOnlyList<Guid> MarketIds { get; init; } = [];  // markets that sell it, priority order; empty = Anywhere
+    public Guid? DefaultMarketId { get; init; }    // legacy (schema 1); see IngredientMarkets below
     public bool IsStaple { get; init; }
 }
 
@@ -125,6 +126,7 @@ public sealed record ShoppingItem : Entity         // ingredient item: Id = Ids.
     public bool MarketOverridden { get; init; }    // moved for this week only
     public bool IsStaple { get; init; }
     public DateTime? CheckedAt { get; init; }      // null = not bought
+    public bool IsNeeded { get; init; }            // staple marked "Need to buy": listed and counted like a normal item
 }
 ```
 
@@ -144,27 +146,44 @@ Lists are `IReadOnlyList<T>`; services replace them whole (`meal with { Ingredie
 - `Validation`: one static method per rule in spec › Validation, returning an error message or null. Name rules take the existing entities and the id being edited (`MealName(name, meals, editingId)`), so an entity never clashes with itself. Invite codes are normalized with `NormalizeInviteCode` and must be 8 Crockford base32 characters.
 - `CoreJson.Options`: the shared `JsonSerializerOptions` (`JsonSerializerDefaults.Web`) for storage, sync and backup.
 - `EntityTypes`: the six type names, `Serialize(entity)` and `Deserialize(type, json)` (null for an unknown type or bad JSON).
-- `BackupFile`: `SchemaVersion` (1), `ExportedAt`, and one list per entity type (`Markets`, `Ingredients`, `Meals`, `PlannedMeals`, `ShoppingLists`, `ShoppingItems`). `Create(...)` drops deleted entities; `Serialize()`; `Deserialize(json)` returns null for unreadable files or an unknown schema version; `FileName(date)`.
+- `BackupFile`: `SchemaVersion` (2; version 1 files import, their ingredients read through `IngredientMarkets`), `ExportedAt`, and one list per entity type (`Markets`, `Ingredients`, `Meals`, `PlannedMeals`, `ShoppingLists`, `ShoppingItems`). `Create(...)` drops deleted entities; `Serialize()`; `Deserialize(json)` returns null for unreadable files or an unknown schema version; `FileName(date)`.
+
+- `IngredientMarkets.Of(ingredient)`: the ingredient's markets in priority order: `MarketIds` if not empty, otherwise `[DefaultMarketId]` if set, otherwise empty. Every reader goes through it. Services write `MarketIds` and also set `DefaultMarketId = MarketIds.FirstOrDefault()`, so a phone still on the older version keeps seeing the first market (if it edits the ingredient, the extra markets are lost; update both phones together).
+
+### MarketChooser
+
+Picks the week's markets so the household visits as few as possible (spec › Choosing markets). Pure and unit-tested.
+
+`Choose(IReadOnlyList<ShoppingItem> items, IReadOnlyDictionary<Guid, Ingredient> ingredients, IEnumerable<Market> markets) → IReadOnlyList<Guid>` (the chosen markets, in Settings order):
+
+1. Only live markets count (`IsDeleted` false). An item's **candidates** are `IngredientMarkets.Of(ingredient)` filtered to live markets, in priority order.
+2. **Pinned** items keep their `MarketId`, and its market (if live) is always in the result: manual items, `MarketOverridden` items, staples with `IsNeeded`, and ticked items (`CheckedAt` set; only existing items can be ticked, so this applies on Update).
+3. **Flexible** items: every other live ingredient item that is not a staple (`IsStaple && !IsNeeded`) and has at least one candidate. Staples and items without candidates (Anywhere) never require a market.
+4. Search the subsets `S` of the markets that appear among the flexible items' candidates, each unioned with the pinned markets. `S` is feasible when every flexible item has a candidate in `S`. Pick the feasible `S` with the fewest markets; ties go to the smallest total rank (for each flexible item, the index of its highest-priority candidate in `S`), then to the earlier markets in Settings order (compare the sorted `SortOrder` lists). The search is exhaustive up to 12 candidate markets (4096 subsets); beyond that, add markets greedily (the one covering most uncovered items, same tie-breaks).
+
+`Assign(item, chosen, ingredients) → Guid?`: a pinned item keeps its `MarketId`; any other ingredient item goes to its highest-priority candidate in `chosen`, else (staples only) its first candidate, else null (Anywhere).
 
 ### ShoppingListBuilder
 
-`Build(DateOnly week, IEnumerable<PlannedMeal>, IReadOnlyDictionary<Guid, Meal>, IReadOnlyDictionary<Guid, Ingredient>) → IReadOnlyList<ShoppingItem>`
+`Build(DateOnly week, IEnumerable<PlannedMeal>, IReadOnlyDictionary<Guid, Meal>, IReadOnlyDictionary<Guid, Ingredient>, IEnumerable<Market> markets, IEnumerable<ShoppingItem> existingItems) → IReadOnlyList<ShoppingItem>`
+
+`existingItems` is the week's current list (empty when creating). Its pinned items (MarketChooser step 2) are passed to the chooser so their markets stay in the set.
 
 1. Take the non-deleted entries for `week`. Group them by `MealId` and count `Times`. Order the groups by their earliest `AddedAt`. Skip meals that are missing or deleted.
 2. For each meal, in that order, and each `MealIngredient` in the meal's order (skip missing or deleted ingredients), add an `ItemSource(meal.Id, meal.Name, times, row.Quantity * times)` to that ingredient's bucket.
 3. For each bucket, create a `ShoppingItem`:
    - `Id = Ids.ForItem(week, ingredientId)`
-   - `Name`, `Unit` and `IsStaple` from the ingredient; `MarketId = ingredient.DefaultMarketId`
+   - `Name`, `Unit` and `IsStaple` from the ingredient; `MarketId` from `MarketChooser`: run `Choose` over the built items plus the existing manual and pinned items, then `Assign` each built item (a built item whose existing match is pinned keeps the existing `MarketId`, and keeps `IsNeeded`)
    - `Quantity` = sum of the non-null source quantities, or null if all are null
    - `HasUnspecified` = any source quantity is null
    - `CheckedAt = null`, `MarketOverridden = false`
 4. Return the items in first-seen order.
 
-`IsOutOfDate(existingItems, builtItems) → bool`: compare only ingredient items (`IngredientId != null`) that are not deleted. Returns true if the sets of ingredient ids differ, or if any matching pair differs in `Name`, `Unit`, `Quantity`, `HasUnspecified`, `IsStaple`, `Sources` (sequence-equal), or in `MarketId` when the existing item is not `MarketOverridden`.
+`IsOutOfDate(existingItems, builtItems) → bool`: compare only ingredient items (`IngredientId != null`) that are not deleted. Returns true if the sets of ingredient ids differ, or if any matching pair differs in `Name`, `Unit`, `Quantity`, `HasUnspecified`, `IsStaple`, `Sources` (sequence-equal), or in `MarketId` when the existing item is not pinned (not `MarketOverridden`, not ticked, not `IsNeeded`).
 
 `Merge(existingItems, builtItems, DateTime now) → IReadOnlyList<ShoppingItem>` (the changed entities to save):
 
-- For a built item with a live existing match: take the built values, but keep the existing `Id`, `CheckedAt`, `MarketOverridden`, and also `MarketId` when overridden. If built `Quantity ?? 0` is greater than existing `Quantity ?? 0`, set `CheckedAt = null`.
+- For a built item with a live existing match: take the built values, but keep the existing `Id`, `CheckedAt`, `MarketOverridden`, `IsNeeded`, and also `MarketId` when the existing item is pinned (overridden, ticked or needed). Unticked, unpinned items take the newly chosen market. If built `Quantity ?? 0` is greater than existing `Quantity ?? 0`, set `CheckedAt = null`.
 - For a built item with no match, or whose match is deleted: add it as new (`IsDeleted = false`, unticked).
 - For an existing live ingredient item with no built match: mark it `IsDeleted = true`.
 - Never return manual items.
@@ -181,8 +200,9 @@ A pure function from (list items, markets, meals in plan order, view) to groups 
   - One group per meal, in plan order. A row per source: the item plus that source's quantity and "Also in" names.
   - Unticked rows follow the meal's ingredient order; ticked rows sink, ordered by `CheckedAt`.
   - Manual items in an "Extras" group, alphabetical with ticked ones last.
-- **Both views:** staples are removed from the groups and listed in a final "Check you have" group, alphabetical with ticked ones last.
-- `Progress(items)`: `(bought, total)` over live, non-staple items.
+- **Both views:** staples are removed from the groups and listed in a final "Check you have" group, alphabetical with ticked ones last. A staple with `IsNeeded` stays in the normal groups (with its Staple badge) instead.
+- `Progress(items)`: `(bought, total)` over live items that are not staples, or are staples with `IsNeeded`.
+- `ChosenMarkets(items, markets)`: the distinct live markets of the live items you buy (non-staple or `IsNeeded`), in Settings order. The Shopping header shows them joined with " + ".
 - Output: `ShoppingGroup(Kind, Id, Title, Times, Rows)` with `Kind` one of `Anywhere`, `Market`, `Meal`, `Extras`, `CheckYouHave`, and `ShoppingRow(Item, Quantity, HasUnspecified, MealNames)`. In a meal group a row's quantity is that source's amount and `MealNames` are the other meals ("Also in"); elsewhere it is the item total and every meal that needs it.
 - By meal: meal groups come from the items' sources. A meal in the sources but no longer in the plan (list out of date) is grouped after the planned meals. Alphabetical order is case-insensitive.
 
@@ -213,15 +233,15 @@ A pure function from (list items, markets, meals in plan order, view) to groups 
   7. calls `SyncService.RequestSync()`
 - Steps 3–7 live in one place, `EntityWriter.SaveAsync(entities)`. Services validate and build the records, then make one `SaveAsync` call per operation.
 - Services request syncs through `ISyncTrigger`. While `Features:RequireAuth` is false, `NoSyncTrigger` is registered and changes simply stay in the outbox; from M6 `SyncService` implements it.
-- Editors hand services plain drafts: `MealDraft(Id?, Name, Notes, Ingredients)` and `IngredientDraft(Id?, Name, Unit, DefaultMarketId, IsStaple)`. Each service also exposes `Validate(draft)`/`ValidateName(...)` so Save buttons can stay disabled until valid.
+- Editors hand services plain drafts: `MealDraft(Id?, Name, Notes, Ingredients)` and `IngredientDraft(Id?, Name, Unit, MarketIds, IsStaple)`. Each service also exposes `Validate(draft)`/`ValidateName(...)` so Save buttons can stay disabled until valid.
 
 | Service | Methods |
 | --- | --- |
 | MealService | `SaveMeal(MealDraft)`, `DeleteMeal(id)` (also removes current and future `PlannedMeal`s) |
 | IngredientService | `SaveIngredient(IngredientDraft)`, `CanDelete(id)`, `DeleteIngredient(id)`, `IsUsed(id)`, `UsedBy(id)` |
-| MarketService | `Add(name)`, `Rename(id, name)`, `Delete(id)` (clears `DefaultMarketId` on its ingredients), `Reorder(ids)`, `SetItemOrder(marketId, ingredientIds)` |
+| MarketService | `Add(name)`, `Rename(id, name)`, `Delete(id)` (removes it from its ingredients' `MarketIds`), `Reorder(ids)`, `SetItemOrder(marketId, ingredientIds)` |
 | PlanService | `Add(week, mealId)`, `RemoveOne(week, mealId)` (newest entry first), `CountFor(week, mealId)`, `IsReadOnly(week)` |
-| ShoppingService | `GetState(week)` (None / UpToDate / OutOfDate), `CreateOrUpdate(week)`, `Toggle(itemId)`, `MoveToMarket(itemId, marketId?)`, `AddManual(...)`, `EditManual(...)`, `DeleteManual(id)` |
+| ShoppingService | `GetState(week)` (None / UpToDate / OutOfDate), `CreateOrUpdate(week)`, `Toggle(itemId)`, `MoveToMarket(itemId, marketId?)`, `SetNeeded(itemId, bool)` (staples: needed → into the list at a chosen market that sells it, else its first market), `AddManual(...)`, `EditManual(...)`, `DeleteManual(id)` |
 | BackupService | `Export()`, `Preview(file)`, `Import(file)` |
 | PreferencesService | `ShoppingView` |
 | Clock | `UtcNow`, `LocalNow` (wrap `DateTime` so tests can fix time) |
