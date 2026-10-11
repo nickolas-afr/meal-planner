@@ -37,7 +37,7 @@ public sealed class MarketService(AppState state, EntityWriter writer, Clock clo
         await writer.SaveAsync(market with { Name = name.Trim(), UpdatedAt = clock.UtcNow });
     }
 
-    /// <summary>Soft-deletes the market and clears DefaultMarketId on its ingredients.</summary>
+    /// <summary>Soft-deletes the market and removes it from its ingredients' markets.</summary>
     public async Task Delete(Guid id)
     {
         if (state.Market(id) is not { } market)
@@ -45,8 +45,8 @@ public sealed class MarketService(AppState state, EntityWriter writer, Clock clo
 
         var now = clock.UtcNow;
         var changed = new List<Entity> { market with { IsDeleted = true, UpdatedAt = now } };
-        changed.AddRange(state.Ingredients.Where(i => i.DefaultMarketId == id)
-            .Select(i => i with { DefaultMarketId = null, UpdatedAt = now }));
+        changed.AddRange(state.Ingredients.Where(i => IngredientMarkets.Of(i).Contains(id))
+            .Select(i => IngredientMarkets.With(i, [.. IngredientMarkets.Of(i).Where(m => m != id)]) with { UpdatedAt = now }));
         await writer.SaveAsync(changed);
     }
 

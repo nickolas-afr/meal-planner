@@ -74,6 +74,26 @@ public sealed class ShoppingService(AppState state, EntityWriter writer, Clock c
         await writer.SaveAsync(item with { MarketId = marketId, MarketOverridden = true, UpdatedAt = clock.UtcNow });
     }
 
+    /// <summary>
+    /// Staples only. Needed: the staple joins the list at one of the week's chosen markets that sells it,
+    /// otherwise its first market (spec › What an item shows). Not needed: back to Check you have.
+    /// </summary>
+    public async Task SetNeeded(Guid itemId, bool needed)
+    {
+        if (LiveItem(itemId) is not { IsStaple: true } item || item.IsNeeded == needed)
+            return;
+        var updated = item with { IsNeeded = needed, UpdatedAt = clock.UtcNow };
+        if (needed)
+        {
+            var chosen = ShoppingListLayout.ChosenMarkets(Items(item.WeekStart), state.Data.Markets.Values).Select(m => m.Id).ToList();
+            updated = updated with
+            {
+                MarketId = MarketChooser.Assign(item with { IsNeeded = false }, chosen, state.Data.Ingredients, state.Data.Markets.Values),
+            };
+        }
+        await writer.SaveAsync(updated);
+    }
+
     public string? ValidateManual(string? name, string? quantityText, string unit)
     {
         if (Validation.ItemName(name) is { } nameError)
@@ -140,7 +160,8 @@ public sealed class ShoppingService(AppState state, EntityWriter writer, Clock c
     }
 
     private IReadOnlyList<ShoppingItem> Build(DateOnly week) =>
-        ShoppingListBuilder.Build(week, state.Data.PlannedMeals.Values, state.Data.Meals, state.Data.Ingredients);
+        ShoppingListBuilder.Build(week, state.Data.PlannedMeals.Values, state.Data.Meals, state.Data.Ingredients,
+            state.Data.Markets.Values, state.Data.ShoppingItems.Values.Where(i => i.WeekStart == week && !i.IsDeleted));
 
     private ShoppingItem? LiveItem(Guid id) =>
         state.Data.ShoppingItems.GetValueOrDefault(id) is { IsDeleted: false } i ? i : null;

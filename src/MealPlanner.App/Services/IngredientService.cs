@@ -19,8 +19,10 @@ public sealed class IngredientService(AppState state, EntityWriter writer, Clock
             return nameError;
         if (!Units.IsValid(draft.Unit))
             return "Choose a unit.";
-        if (draft.DefaultMarketId is { } marketId && state.Market(marketId) is null)
+        if (draft.MarketIds.Any(m => state.Market(m) is null))
             return "Choose an existing market.";
+        if (draft.MarketIds.Distinct().Count() != draft.MarketIds.Count)
+            return "Each market can only be listed once.";
         if (draft.Id is { } id && state.Ingredient(id) is { } existing
             && existing.Unit != draft.Unit && IsUsed(id))
             return "The unit can't change while meals use this ingredient.";
@@ -38,26 +40,24 @@ public sealed class IngredientService(AppState state, EntityWriter writer, Clock
         if (draft.Id is { } id)
         {
             var existing = state.Ingredient(id) ?? throw new InvalidOperationException("This ingredient no longer exists.");
-            ingredient = existing with
+            ingredient = IngredientMarkets.With(existing with
             {
                 Name = name,
                 Unit = draft.Unit,
-                DefaultMarketId = draft.DefaultMarketId,
                 IsStaple = draft.IsStaple,
                 UpdatedAt = clock.UtcNow,
-            };
+            }, [.. draft.MarketIds]);
         }
         else
         {
-            ingredient = new Ingredient
+            ingredient = IngredientMarkets.With(new Ingredient
             {
                 Id = Guid.NewGuid(),
                 Name = name,
                 Unit = draft.Unit,
-                DefaultMarketId = draft.DefaultMarketId,
                 IsStaple = draft.IsStaple,
                 UpdatedAt = clock.UtcNow,
-            };
+            }, [.. draft.MarketIds]);
         }
 
         await writer.SaveAsync(ingredient);

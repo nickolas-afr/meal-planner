@@ -9,8 +9,15 @@ public static class ShoppingListBuilder
         DateOnly week,
         IEnumerable<PlannedMeal> plannedMeals,
         IReadOnlyDictionary<Guid, Meal> meals,
-        IReadOnlyDictionary<Guid, Ingredient> ingredients)
+        IReadOnlyDictionary<Guid, Ingredient> ingredients,
+        IEnumerable<Market> markets,
+        IEnumerable<ShoppingItem> existingItems)
     {
+        var marketList = markets.ToList();
+        var liveExisting = existingItems.Where(i => !i.IsDeleted).ToList();
+        var matches = liveExisting.Where(i => i.IngredientId is not null)
+            .GroupBy(i => i.IngredientId!.Value).ToDictionary(g => g.Key, g => g.First());
+
         var groups = plannedMeals
             .Where(p => !p.IsDeleted && p.WeekStart == week)
             .GroupBy(p => p.MealId)
@@ -36,13 +43,14 @@ public static class ShoppingListBuilder
             }
         }
 
-        var result = new List<ShoppingItem>(order.Count);
+        var drafts = new List<ShoppingItem>(order.Count);
         foreach (var id in order)
         {
             var ing = ingredients[id];
             var sources = buckets[id];
             var known = sources.Where(s => s.Quantity is not null).ToList();
-            result.Add(new ShoppingItem
+            matches.TryGetValue(id, out var match);
+            drafts.Add(new ShoppingItem
             {
                 Id = Ids.ForItem(week, id),
                 WeekStart = week,
@@ -50,13 +58,25 @@ public static class ShoppingListBuilder
                 Name = ing.Name,
                 Unit = ing.Unit,
                 IsStaple = ing.IsStaple,
-                MarketId = ing.DefaultMarketId,
+                MarketId = match?.MarketId,
+                IsNeeded = match?.IsNeeded ?? false,
+                CheckedAt = match?.CheckedAt,
+                MarketOverridden = match?.MarketOverridden ?? false,
                 Quantity = known.Count == 0 ? null : known.Sum(s => s.Quantity!.Value),
                 HasUnspecified = known.Count != sources.Count,
                 Sources = sources,
             });
         }
-        return result;
+
+        // drafts carry their match's pin state so the chooser keeps pinned markets.
+        var chosen = MarketChooser.Choose(
+            drafts.Concat(liveExisting.Where(i => i.IngredientId is null)), ingredients, marketList);
+        return drafts.Select(d => d with
+        {
+            MarketId = MarketChooser.Assign(d, chosen, ingredients, marketList),
+            CheckedAt = null,
+            MarketOverridden = false,
+        }).ToList();
     }
 
     public static bool IsOutOfDate(IEnumerable<ShoppingItem> existingItems, IEnumerable<ShoppingItem> builtItems)
@@ -71,7 +91,7 @@ public static class ShoppingListBuilder
             if (e.Name != b.Name || e.Unit != b.Unit || e.Quantity != b.Quantity
                 || e.HasUnspecified != b.HasUnspecified || e.IsStaple != b.IsStaple
                 || !e.Sources.SequenceEqual(b.Sources)
-                || (!e.MarketOverridden && e.MarketId != b.MarketId))
+                || (!MarketChooser.IsPinned(e) && e.MarketId != b.MarketId))
                 return true;
         }
         return false;
@@ -113,7 +133,8 @@ public static class ShoppingListBuilder
                     IsDeleted = false,
                     Version = e.Version,
                     MarketOverridden = e.MarketOverridden,
-                    MarketId = e.MarketOverridden ? e.MarketId : b.MarketId,
+                    IsNeeded = e.IsNeeded,
+                    MarketId = MarketChooser.IsPinned(e) ? e.MarketId : b.MarketId,
                     CheckedAt = (b.Quantity ?? 0) > (e.Quantity ?? 0) ? null : e.CheckedAt,
                     UpdatedAt = e.UpdatedAt,
                 };

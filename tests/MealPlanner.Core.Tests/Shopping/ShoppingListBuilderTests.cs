@@ -18,8 +18,16 @@ public class ShoppingListBuilderTests
     private static PlannedMeal Plan(Meal m, int minutes = 0, DateOnly? week = null, bool deleted = false) =>
         new() { Id = Guid.NewGuid(), WeekStart = week ?? Week, MealId = m.Id, AddedAt = T0.AddMinutes(minutes), IsDeleted = deleted };
 
-    private static IReadOnlyList<ShoppingItem> Build(IEnumerable<PlannedMeal> plans, Meal[] meals, Ingredient[] ings) =>
-        ShoppingListBuilder.Build(Week, plans, meals.ToDictionary(m => m.Id), ings.ToDictionary(i => i.Id));
+    private static IReadOnlyList<ShoppingItem> Build(IEnumerable<PlannedMeal> plans, Meal[] meals, Ingredient[] ings,
+        Market[]? markets = null, IEnumerable<ShoppingItem>? existing = null) =>
+        ShoppingListBuilder.Build(Week, plans, meals.ToDictionary(m => m.Id), ings.ToDictionary(i => i.Id),
+            markets ?? [], existing ?? []);
+
+    private static Market Mk(string name, int order) =>
+        new() { Id = Guid.NewGuid(), Name = name, SortOrder = order };
+
+    private static Ingredient IngAt(string name, params Market[] ms) =>
+        IngredientMarkets.With(Ing(name), ms.Select(m => m.Id).ToList());
 
     private static ShoppingItem Manual() =>
         new() { Id = Guid.NewGuid(), WeekStart = Week, Name = "Candles" };
@@ -145,12 +153,12 @@ public class ShoppingListBuilderTests
     [Fact]
     public void Build_CopiesStapleAndMarket()
     {
-        var market = Guid.NewGuid();
-        var salt = Ing("Salt", "g", market, staple: true);
+        var market = Mk("Lidl", 0);
+        var salt = Ing("Salt", "g", market.Id, staple: true);
         var a = MealOf("A", false, new MealIngredient(salt.Id, 1));
-        var item = Assert.Single(Build([Plan(a)], [a], [salt]));
+        var item = Assert.Single(Build([Plan(a)], [a], [salt], [market]));
         Assert.True(item.IsStaple);
-        Assert.Equal(market, item.MarketId);
+        Assert.Equal(market.Id, item.MarketId);
     }
 
     [Fact]
@@ -345,5 +353,108 @@ public class ShoppingListBuilderTests
         var result = ShoppingListBuilder.Merge(existing.Take(1), built, Now);
         Assert.Equal(2, result.Count);
         Assert.All(result, r => Assert.Equal(Now, r.UpdatedAt));
+    }
+
+    // ---- M8: market choice ----
+
+    [Fact]
+    public void Build_SingleMarketDataMatchesLegacyBehaviour()
+    {
+        var m1 = Mk("A", 0);
+        var m2 = Mk("B", 1);
+        var x = Ing("X", "g", m1.Id);
+        var y = Ing("Y", "g", m2.Id);
+        var z = Ing("Z");
+        var meal = MealOf("M", false, new MealIngredient(x.Id, 1), new MealIngredient(y.Id, 1), new MealIngredient(z.Id, 1));
+        var built = Build([Plan(meal)], [meal], [x, y, z], [m1, m2]);
+        Assert.Equal(m1.Id, built[0].MarketId);
+        Assert.Equal(m2.Id, built[1].MarketId);
+        Assert.Null(built[2].MarketId);
+    }
+
+    [Fact]
+    public void Build_UsesFewestMarkets()
+    {
+        var m1 = Mk("A", 0);
+        var m2 = Mk("B", 1);
+        var x = IngAt("X", m1, m2);
+        var y = IngAt("Y", m2);
+        var meal = MealOf("M", false, new MealIngredient(x.Id, 1), new MealIngredient(y.Id, 1));
+        var built = Build([Plan(meal)], [meal], [x, y], [m1, m2]);
+        Assert.All(built, b => Assert.Equal(m2.Id, b.MarketId));
+    }
+
+    [Fact]
+    public void Build_UntickedItemMovesOnUpdateButTickedStays()
+    {
+        var m1 = Mk("A", 0);
+        var m2 = Mk("B", 1);
+        var x = IngAt("X", m1, m2);
+        var meal1 = MealOf("M1", false, new MealIngredient(x.Id, 1));
+        var first = Build([Plan(meal1)], [meal1], [x], [m1, m2]);
+        Assert.Equal(m1.Id, first[0].MarketId);
+
+        // A second meal needs y, only sold at m2: best choice is now m2 for both.
+        var y = IngAt("Y", m2);
+        var meal2 = MealOf("M2", false, new MealIngredient(y.Id, 1));
+        var plans = new[] { Plan(meal1), Plan(meal2, 1) };
+        var unticked = Build(plans, [meal1, meal2], [x, y], [m1, m2], first);
+        Assert.Equal(m2.Id, unticked.Single(i => i.IngredientId == x.Id).MarketId);
+
+        var ticked = first.Select(i => i with { CheckedAt = T0 }).ToList();
+        var stay = Build(plans, [meal1, meal2], [x, y], [m1, m2], ticked);
+        Assert.Equal(m1.Id, stay.Single(i => i.IngredientId == x.Id).MarketId);
+        Assert.Equal(m2.Id, stay.Single(i => i.IngredientId == y.Id).MarketId);
+        Assert.Null(stay[0].CheckedAt);
+        Assert.False(stay[0].MarketOverridden);
+    }
+
+    [Fact]
+    public void Build_IsNeededSurvivesBuildAndMerge()
+    {
+        var m1 = Mk("A", 0);
+        var salt = Ing("Salt", "g", m1.Id, staple: true);
+        var meal = MealOf("M", false, new MealIngredient(salt.Id, 1));
+        var first = Build([Plan(meal)], [meal], [salt], [m1]);
+        var existing = first.Select(i => i with { IsNeeded = true }).ToList();
+        var rebuilt = Build([Plan(meal)], [meal], [salt], [m1], existing);
+        Assert.True(rebuilt[0].IsNeeded);
+        Assert.Empty(ShoppingListBuilder.Merge(existing, rebuilt, Now));
+        var stale = existing.Select(i => i with { Quantity = 99 }).ToList();
+        Assert.True(Assert.Single(ShoppingListBuilder.Merge(stale, rebuilt, Now)).IsNeeded);
+    }
+
+    [Fact]
+    public void Build_ExistingManualItemMarketIsKept()
+    {
+        var m1 = Mk("A", 0);
+        var m2 = Mk("B", 1);
+        var x = IngAt("X", m1, m2);
+        var meal = MealOf("M", false, new MealIngredient(x.Id, 1));
+        var manual = Manual() with { MarketId = m2.Id };
+        var built = Build([Plan(meal)], [meal], [x], [m1, m2], [manual]);
+        Assert.Equal(m2.Id, built[0].MarketId);
+    }
+
+    [Fact]
+    public void IsOutOfDate_UnpinnedChosenMarketChangeIsTrueButTickedIsNot()
+    {
+        var m1 = Mk("A", 0);
+        var m2 = Mk("B", 1);
+        var x = IngAt("X", m1, m2);
+        var meal1 = MealOf("M1", false, new MealIngredient(x.Id, 1));
+        var y = IngAt("Y", m2);
+        var meal2 = MealOf("M2", false, new MealIngredient(y.Id, 1));
+        var plans = new[] { Plan(meal1), Plan(meal2, 1) };
+
+        // the plan gained an item; keep the ids equal so only the market differs
+        var existingBoth = Build(plans, [meal1, meal2], [x, y], [m1, m2]);
+        var stale = existingBoth.Select(i => i.IngredientId == x.Id ? i with { MarketId = m1.Id } : i).ToList();
+        var built = Build(plans, [meal1, meal2], [x, y], [m1, m2], stale);
+        Assert.True(ShoppingListBuilder.IsOutOfDate(stale, built));
+
+        var ticked = stale.Select(i => i.IngredientId == x.Id ? i with { CheckedAt = T0 } : i).ToList();
+        var builtTicked = Build(plans, [meal1, meal2], [x, y], [m1, m2], ticked);
+        Assert.False(ShoppingListBuilder.IsOutOfDate(ticked, builtTicked));
     }
 }

@@ -15,6 +15,8 @@
 }
 .progress-text { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; }
 
+.chosen { margin: 0 0 8px; font-size: 13px; color: var(--text-2); }
+
 .bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
 .fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 150ms ease-out; }
 

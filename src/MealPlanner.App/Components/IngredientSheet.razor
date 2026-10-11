@@ -1,7 +1,8 @@
-@implements IDisposable
+@implements IAsyncDisposable
 @inject AppState State
 @inject IngredientService Ingredients
 @inject MarketService Markets
+@inject IJSRuntime JS
 
 <BottomSheet Open="Open && !_confirmDelete" Title="@(IngredientId is null ? "New ingredient" : "Edit ingredient")"
              ConfirmText="Done" ConfirmDisabled="@(!IsValid)" OnConfirm="SaveAsync" OnCancel="Cancel">
@@ -9,20 +10,54 @@
         <TextField @bind-Value="_name" Label="Name" Placeholder="e.g. Olive oil" MaxLength="60"
                    Error="@NameError" AutoFocus="@(IngredientId is null)" />
 
-        <div class="grid">
-            <div class="unit">
-                <Picker @bind-Value="_unit" Label="Unit" Options="_unitOptions" Disabled="@_locked" />
-                @if (_locked)
-                {
-                    <span class="lock" aria-hidden="true"><LockIcon Size="16" /></span>
-                }
-            </div>
-            <Picker @bind-Value="_market" Label="Market" Options="MarketOptions" />
+        <div class="unit">
+            <Picker @bind-Value="_unit" Label="Unit" Options="_unitOptions" Disabled="@_locked" />
+            @if (_locked)
+            {
+                <span class="lock" aria-hidden="true"><LockIcon Size="16" /></span>
+            }
         </div>
         @if (_locked)
         {
             <p class="note t-secondary">Unit is locked while @string.Join(", ", _usedBy) use this ingredient.</p>
         }
+
+        <section class="markets">
+            <div class="mhead">
+                <h3 class="t-section-label">Markets</h3>
+                <span class="mnote t-secondary">In order of preference</span>
+            </div>
+            @if (_allMarkets.Count == 0)
+            {
+                <p class="nomarkets t-secondary">No markets yet. Add them in Settings.</p>
+            }
+            else
+            {
+                <div class="mcard">
+                    @* Sortable owns the DOM of this element's children, so @key changes after each reorder to rebuild it. *@
+                    <div class="mlist" @ref="_list" @key="_listKey">
+                        @for (var n = 0; n < _chosen.Count; n++)
+                        {
+                            var m = _chosen[n];
+                            <div class="mrow" data-id="@m.Id" @key="m.Id">
+                                <span class="num t-secondary" aria-hidden="true">@(n + 1)</span>
+                                <span class="mname">@m.Name</span>
+                                <span class="drag-handle" aria-label="Reorder @m.Name" role="img"><DragHandleIcon Size="22" /></span>
+                                <button type="button" class="remove" aria-label="Remove @m.Name" @onclick="() => Remove(m.Id)"><MinusCircleIcon Size="22" /></button>
+                            </div>
+                        }
+                    </div>
+                    @if (_chosen.Count == 0)
+                    {
+                        <div class="mrow empty"><span class="mname t-secondary">Anywhere</span></div>
+                    }
+                </div>
+                @if (_available.Count > 0)
+                {
+                    <Picker @key="_marketIds.Count" Value="" ValueChanged="AddMarket" Label="Add market" Options="_addOptions" />
+                }
+            }
+        </section>
 
         <Toggle @bind-Value="_staple" Label="Pantry staple" Subtitle="Listed under &quot;Check you have&quot; instead" />
 
@@ -48,7 +83,13 @@
     private bool _locked;
     private string _name = "";
     private string _unit = "";
-    private string _market = "";
+    private List<Guid> _marketIds = new();
+    private ElementReference _list;
+    private Guid _listKey = Guid.NewGuid();
+    private DotNetObjectReference<IngredientSheet>? _self;
+    private int _sortableId;
+    private bool _needsInit;
+    private bool _disposed;
     private bool _staple;
     private IReadOnlyList<string> _usedBy = Array.Empty<string>();
 
@@ -58,23 +99,34 @@
     /// <summary>The saved ingredient after Done; null after Cancel or Delete.</summary>
     [Parameter] public EventCallback<Ingredient?> OnClose { get; set; }
 
-    private IReadOnlyList<PickerOption> MarketOptions =>
-        new[] { new PickerOption("", "Anywhere") }
-            .Concat(Markets.All().Select(m => new PickerOption(m.Id.ToString(), m.Name))).ToList();
+    private IReadOnlyList<Market> _allMarkets => Markets.All();
 
-    private IngredientDraft Draft => new(IngredientId, _name, _unit,
-        Guid.TryParse(_market, out var m) ? m : null, _staple);
+    private IReadOnlyList<Market> _chosen =>
+        _marketIds.Select(id => _allMarkets.FirstOrDefault(m => m.Id == id)).OfType<Market>().ToList();
+
+    private IReadOnlyList<Market> _available => _allMarkets.Where(m => !_marketIds.Contains(m.Id)).ToList();
+
+    private IReadOnlyList<PickerOption> _addOptions =>
+        new[] { new PickerOption("", "Add market…") }
+            .Concat(_available.Select(m => new PickerOption(m.Id.ToString(), m.Name))).ToList();
+
+    private IngredientDraft Draft => new(IngredientId, _name, _unit, _marketIds.ToList(), _staple);
 
     private bool IsValid => Ingredients.Validate(Draft) is null;
 
     private string? NameError => _touched || !string.IsNullOrWhiteSpace(_name)
         ? Ingredients.ValidateName(_name, IngredientId) : null;
 
-    protected override void OnInitialized() => State.OnChange += OnStateChanged;
+    protected override void OnInitialized()
+    {
+        _self = DotNetObjectReference.Create(this);
+        State.OnChange += OnStateChanged;
+    }
 
     protected override void OnParametersSet()
     {
         if (Open && !_wasOpen) Reset();
+        if (!Open && _wasOpen) _ = DestroySortableAsync();
         _wasOpen = Open;
     }
 
@@ -82,12 +134,13 @@
     {
         _confirmDelete = false;
         _touched = false;
+        _needsInit = true;
         var existing = IngredientId is { } id ? State.Ingredient(id) : null;
         if (existing is not null)
         {
             _name = existing.Name;
             _unit = existing.Unit;
-            _market = existing.DefaultMarketId is { } m && State.Market(m) is not null ? m.ToString() : "";
+            _marketIds = IngredientMarkets.Of(existing).Where(m => State.Market(m) is not null).ToList();
             _staple = existing.IsStaple;
             RefreshUsage(existing.Id);
         }
@@ -95,11 +148,47 @@
         {
             _name = InitialName ?? "";
             _unit = "";
-            _market = "";
+            _marketIds = new();
             _staple = false;
             _locked = false;
             _usedBy = Array.Empty<string>();
         }
+    }
+
+    private void AddMarket(string value)
+    {
+        if (Guid.TryParse(value, out var id) && !_marketIds.Contains(id)) _marketIds.Add(id);
+    }
+
+    private void Remove(Guid id) => _marketIds.Remove(id);
+
+    [JSInvokable]
+    public async Task OnReorder(string[] ids)
+    {
+        var parsed = ids.Select(s => Guid.TryParse(s, out var g) ? g : (Guid?)null)
+            .Where(g => g is not null).Select(g => g!.Value).Where(_marketIds.Contains).ToList();
+        if (parsed.Count == _marketIds.Count) _marketIds = parsed;
+        // Sortable moved DOM nodes Blazor owns: rebuild the list element from scratch and re-init on that render.
+        await DestroySortableAsync();
+        _listKey = Guid.NewGuid();
+        _needsInit = true;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_needsInit || _disposed || !Open || _list.Id is null) return;
+        _needsInit = false;
+        await DestroySortableAsync();
+        _sortableId = await JS.InvokeAsync<int>("mealPlanner.sortable.init", _list, _self, ".drag-handle");
+    }
+
+    private async Task DestroySortableAsync()
+    {
+        if (_sortableId == 0) return;
+        var id = _sortableId;
+        _sortableId = 0;
+        try { await JS.InvokeVoidAsync("mealPlanner.sortable.destroy", id); } catch (JSDisconnectedException) { }
     }
 
     private void RefreshUsage(Guid id)
@@ -131,5 +220,11 @@
         await OnClose.InvokeAsync(null);
     }
 
-    public void Dispose() => State.OnChange -= OnStateChanged;
+    public async ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        State.OnChange -= OnStateChanged;
+        await DestroySortableAsync();
+        _self?.Dispose();
+    }
 }

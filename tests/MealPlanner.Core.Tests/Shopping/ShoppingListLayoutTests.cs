@@ -236,4 +236,68 @@ public class ShoppingListLayoutTests
         };
         Assert.Equal((1, 2), ShoppingListLayout.Progress(items));
     }
+
+    [Fact]
+    public void ByMarket_NeededStaple_StaysInItsMarketGroup_NotCheckYouHave()
+    {
+        var m = Mkt("M", 1);
+        var items = new[]
+        {
+            Item("salt", staple: true, market: m.Id) with { IsNeeded = true },
+            Item("oil", staple: true, market: m.Id),
+        };
+        var groups = ShoppingListLayout.ByMarket(items, [m]);
+        Assert.Equal(["M", "Check you have"], groups.Select(g => g.Title));
+        Assert.Equal(["salt"], Names(groups[0]));
+        Assert.Equal(["oil"], Names(groups[1]));
+    }
+
+    [Fact]
+    public void ByMeal_NeededStaple_AppearsInMealGroup_NotCheckYouHave()
+    {
+        var meal = MealOf("Stew");
+        var items = new[]
+        {
+            Item("salt", Guid.NewGuid(), staple: true, sources: [Src(meal)]) with { IsNeeded = true },
+            Item("oil", staple: true),
+        };
+        var groups = ShoppingListLayout.ByMeal(items, [meal]);
+        Assert.Equal(GroupKind.Meal, groups[0].Kind);
+        Assert.Equal(["salt"], Names(groups[0]));
+        var check = Assert.Single(groups, g => g.Kind == GroupKind.CheckYouHave);
+        Assert.Equal(["oil"], Names(check));
+    }
+
+    [Fact]
+    public void Progress_CountsNeededStaple_NotPlainStaple()
+    {
+        var items = new[]
+        {
+            Item("salt", staple: true, checkedAt: T0) with { IsNeeded = true },
+            Item("oil", staple: true, checkedAt: T0),
+            Item("a"),
+        };
+        Assert.Equal((1, 2), ShoppingListLayout.Progress(items));
+    }
+
+    [Fact]
+    public void ChosenMarkets_DistinctInSortOrder_SkippingExcludedItemsAndMarkets()
+    {
+        var b = Mkt("B", 2);
+        var a = Mkt("A", 1);
+        var onlyStaple = Mkt("S", 3);
+        var gone = Mkt("Gone", 4, deleted: true);
+        var onlyDeletedItem = Mkt("D", 5);
+        var items = new[]
+        {
+            Item("x", market: b.Id), Item("y", market: b.Id), Item("z", market: a.Id),
+            Item("anywhere"),
+            Item("plain", staple: true, market: onlyStaple.Id),
+            Item("needed", staple: true, market: onlyStaple.Id) with { IsNeeded = true, MarketId = a.Id },
+            Item("g", market: gone.Id),
+            Item("del", market: onlyDeletedItem.Id, deleted: true),
+        };
+        var chosen = ShoppingListLayout.ChosenMarkets(items, [b, a, onlyStaple, gone, onlyDeletedItem]);
+        Assert.Equal(["A", "B"], chosen.Select(m => m.Name));
+    }
 }

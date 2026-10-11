@@ -47,6 +47,10 @@
             </button>
             <span class="progress-text">@_bought of @_total bought</span>
         </div>
+        @if (_chosen.Count > 0)
+        {
+            <p class="chosen">@string.Join(" + ", _chosen.Select(m => m.Name))</p>
+        }
         <div class="bar" role="progressbar" aria-label="Shopping progress" aria-valuemin="0" aria-valuemax="@_total" aria-valuenow="@_bought">
             <div class="fill" style="width: @(_total == 0 ? 0 : _bought * 100 / _total)%"></div>
         </div>
@@ -171,12 +175,15 @@
 </div>
 
 @code {
+    private static readonly RenderFragment StapleBadge = __builder => { <Badge Variant="BadgeVariant.Staple">Staple</Badge> };
+
     private RenderFragment RowView(ShoppingGroup g, ShoppingRow r, string? subtitle, bool handle) => __builder =>
     {
         var item = r.Item;
         var ticked = item.CheckedAt is not null;
         <CheckRow @key="@($"{g.Kind}-{g.Id}-{item.Id}-{ticked}")"
                   Title="@item.Name" Subtitle="@subtitle"
+                  TitleSuffix="@(item.IsStaple && item.IsNeeded ? StapleBadge : null)"
                   Quantity="@QuantityFormat.Format(r.Quantity, r.HasUnspecified, item.Unit)"
                   Checked="ticked" Disabled="@(_reorderMarket is not null && g.Id == _reorderMarket)"
                   ShowHandle="handle" DataId="@(handle ? item.IngredientId?.ToString() : null)" Animate="@(!handle)"
@@ -209,6 +216,7 @@
     private IReadOnlyList<ShoppingItem> _items = [];
     private IReadOnlyList<ShoppingGroup> _groups = [];
     private IReadOnlyList<Market> _markets = [];
+    private IReadOnlyList<Market> _chosen = [];
     private int _mealCount;
     private int _bought;
     private int _total;
@@ -274,6 +282,7 @@
         _state = ShoppingSvc.GetState(_week);
         _items = ShoppingSvc.Items(_week);
         _markets = MarketSvc.All();
+        _chosen = ShoppingListLayout.ChosenMarkets(_items, State.Data.Markets.Values);
         var meals = ShoppingSvc.MealsInPlanOrder(_week);
         _mealCount = meals.Count;
         (_bought, _total) = ShoppingListLayout.Progress(_items);
@@ -323,6 +332,8 @@
         _moreItem = item;
         _moveOpen = false;
         var opts = new List<ActionSheetOption> { new("Move to market…") };
+        if (item.IsStaple)
+            opts.Add(new(item.IsNeeded ? "Don't need" : "Need to buy"));
         if (item.IngredientId is null)
         {
             opts.Add(new("Edit"));
@@ -346,6 +357,11 @@
                 _editItem = item;
                 CloseMore();
                 _sheetOpen = true;
+                break;
+            case "Need to buy":
+            case "Don't need":
+                CloseMore();
+                await ShoppingSvc.SetNeeded(item.Id, !item.IsNeeded);
                 break;
             case "Delete":
                 CloseMore();

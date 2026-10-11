@@ -78,11 +78,54 @@ public class BackupFileTests
     }
 
     [Fact]
-    public void Deserialize_schema_version_2_returns_null()
+    public void Deserialize_schema_version_3_returns_null()
     {
-        var file = new BackupFile { SchemaVersion = 2, ExportedAt = Exported };
+        var file = new BackupFile { SchemaVersion = 3, ExportedAt = Exported };
 
         Assert.Null(BackupFile.Deserialize(file.Serialize()));
+    }
+
+    [Fact]
+    public void Deserialize_schema_version_0_returns_null()
+    {
+        var file = new BackupFile { SchemaVersion = 0, ExportedAt = Exported };
+
+        Assert.Null(BackupFile.Deserialize(file.Serialize()));
+    }
+
+    [Fact]
+    public void Deserialize_schema_1_with_only_defaultMarketId_reads_the_market()
+    {
+        var marketId = Guid.NewGuid();
+        var json = $$"""
+        {"schemaVersion":1,"exportedAt":"2026-10-09T18:00:00Z","markets":[],"meals":[],"plannedMeals":[],"shoppingLists":[],"shoppingItems":[],
+         "ingredients":[{"id":"{{Guid.NewGuid()}}","name":"Rice","unit":"g","defaultMarketId":"{{marketId}}"}]}
+        """;
+
+        var back = BackupFile.Deserialize(json);
+
+        Assert.NotNull(back);
+        Assert.Equal(1, back.SchemaVersion);
+        Assert.Equal([marketId], IngredientMarkets.Of(Assert.Single(back.Ingredients)));
+    }
+
+    [Fact]
+    public void Schema_2_round_trip_keeps_MarketIds_and_IsNeeded()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        var file = BackupFile.Create(
+            Exported, [], [IngredientMarkets.With(new Ingredient { Id = Guid.NewGuid(), Name = "Salt", IsStaple = true }, [a, b])],
+            [], [], [],
+            [new ShoppingItem { Id = Guid.NewGuid(), WeekStart = new DateOnly(2026, 10, 5), Name = "Salt", IsStaple = true, IsNeeded = true }]);
+
+        var back = BackupFile.Deserialize(file.Serialize());
+
+        Assert.NotNull(back);
+        Assert.Equal(2, back.SchemaVersion);
+        Assert.Equal([a, b], back.Ingredients[0].MarketIds);
+        Assert.Equal(a, back.Ingredients[0].DefaultMarketId);
+        Assert.True(back.ShoppingItems[0].IsNeeded);
     }
 
     [Fact]

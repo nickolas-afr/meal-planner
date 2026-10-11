@@ -166,7 +166,7 @@
 </BottomSheet>
 
 <ConfirmDialog Open="_confirmDelete" Title="@($"Delete {_editing?.Name}?")"
-               Message="@($"Items from {_editing?.Name} will move to Anywhere.")" ConfirmText="Delete" Destructive="true"
+               Message="@($"{_editing?.Name} will be removed from its ingredients; items only sold there move to Anywhere.")" ConfirmText="Delete" Destructive="true"
                OnConfirm="DeleteAsync" OnCancel="@(() => _confirmDelete = false)" />
 
 @code {

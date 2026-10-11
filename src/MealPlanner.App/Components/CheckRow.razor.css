@@ -96,3 +96,5 @@
 @media (prefers-reduced-motion: reduce) {
     .check-row.animate { animation: none; }
 }
+
+.suffix { margin-left: 8px; display: inline-block; vertical-align: middle; text-decoration: none; }

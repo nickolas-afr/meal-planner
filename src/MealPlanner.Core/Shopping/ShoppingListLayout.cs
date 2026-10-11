@@ -32,7 +32,7 @@ public static class ShoppingListLayout
     public static IReadOnlyList<ShoppingGroup> ByMarket(IEnumerable<ShoppingItem> items, IEnumerable<Market> markets)
     {
         var live = items.Where(i => !i.IsDeleted).ToList();
-        var regular = live.Where(i => !i.IsStaple).ToList();
+        var regular = live.Where(i => !IsPlainStaple(i)).ToList();
         var liveMarkets = markets.Where(m => !m.IsDeleted).OrderBy(m => m.SortOrder).ToList();
         var marketIds = liveMarkets.Select(m => m.Id).ToHashSet();
 
@@ -65,7 +65,7 @@ public static class ShoppingListLayout
     public static IReadOnlyList<ShoppingGroup> ByMeal(IEnumerable<ShoppingItem> items, IReadOnlyList<Meal> mealsInPlanOrder)
     {
         var live = items.Where(i => !i.IsDeleted).ToList();
-        var regular = live.Where(i => !i.IsStaple).ToList();
+        var regular = live.Where(i => !IsPlainStaple(i)).ToList();
 
         // Meal order: plan order first, then meals only seen in sources, first-seen order.
         var order = new List<(Guid Id, string Name, Meal? Meal)>();
@@ -108,10 +108,23 @@ public static class ShoppingListLayout
         return Finish(groups, live);
     }
 
-    /// <summary>(bought, total) over live, non-staple items.</summary>
+    /// <summary>A staple not marked "Need to buy": it goes in "Check you have" and is not counted.</summary>
+    private static bool IsPlainStaple(ShoppingItem i) => i.IsStaple && !i.IsNeeded;
+
+    /// <summary>The markets the trip needs: live markets referenced by live, non-plain-staple items, in SortOrder then name.</summary>
+    public static IReadOnlyList<Market> ChosenMarkets(IEnumerable<ShoppingItem> items, IEnumerable<Market> markets)
+    {
+        var ids = items.Where(i => !i.IsDeleted && !IsPlainStaple(i) && i.MarketId is not null)
+            .Select(i => i.MarketId!.Value).ToHashSet();
+        return markets.Where(m => !m.IsDeleted && ids.Contains(m.Id))
+            .GroupBy(m => m.Id).Select(g => g.First())
+            .OrderBy(m => m.SortOrder).ThenBy(m => m.Name, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// <summary>(bought, total) over live items that are not plain staples.</summary>
     public static (int Bought, int Total) Progress(IEnumerable<ShoppingItem> items)
     {
-        var counted = items.Where(i => !i.IsDeleted && !i.IsStaple).ToList();
+        var counted = items.Where(i => !i.IsDeleted && !IsPlainStaple(i)).ToList();
         return (counted.Count(Ticked), counted.Count);
     }
 
@@ -133,7 +146,7 @@ public static class ShoppingListLayout
     /// <summary>Adds the staples group, drops empty groups.</summary>
     private static IReadOnlyList<ShoppingGroup> Finish(List<ShoppingGroup> groups, List<ShoppingItem> live)
     {
-        var staples = live.Where(i => i.IsStaple).ToList();
+        var staples = live.Where(IsPlainStaple).ToList();
         groups.Add(new ShoppingGroup(GroupKind.CheckYouHave, null, CheckYouHaveTitle, 1,
             Sink(staples.Where(Unticked).OrderBy(ByName, StringComparer.OrdinalIgnoreCase), staples.Where(Ticked))
                 .Select(MarketRow).ToList()));

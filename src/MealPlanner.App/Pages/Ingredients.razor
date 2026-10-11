@@ -38,7 +38,13 @@
                     @foreach (var i in group.Items)
                     {
                         <button type="button" class="row" @key="i.Id" @onclick="() => OpenSheet(i.Id)">
-                            <span class="name">@i.Name</span>
+                            <span class="namecol">
+                                <span class="name">@i.Name</span>
+                                @if (AlsoAt(i) is { Length: > 0 } also)
+                                {
+                                    <span class="also">Also at @also</span>
+                                }
+                            </span>
                             <span class="meta">
                                 @if (i.IsStaple)
                                 {
@@ -76,14 +82,18 @@
             var items = _all.Where(i => q.Length == 0 || i.Name.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
             var markets = MarketSvc.All();
             var ids = markets.Select(m => m.Id).ToHashSet();
+            Guid? First(Ingredient i) => IngredientMarkets.Of(i).Where(ids.Contains).Cast<Guid?>().FirstOrDefault();
             var groups = new List<Group>
             {
-                new("Anywhere", items.Where(i => i.DefaultMarketId is not { } m || !ids.Contains(m)).ToList())
+                new("Anywhere", items.Where(i => First(i) is null).ToList())
             };
-            groups.AddRange(markets.Select(m => new Group(m.Name, items.Where(i => i.DefaultMarketId == m.Id).ToList())));
+            groups.AddRange(markets.Select(m => new Group(m.Name, items.Where(i => First(i) == m.Id).ToList())));
             return groups.Where(g => g.Items.Count > 0).ToList();
         }
     }
+
+    private string AlsoAt(Ingredient i) => string.Join(", ",
+        IngredientMarkets.Of(i).Skip(1).Select(id => State.Market(id)).OfType<Market>().Select(m => m.Name));
 
     protected override void OnInitialized() => State.OnChange += OnStateChanged;
 

@@ -7,7 +7,7 @@ namespace MealPlanner.Core.Backup;
 /// <summary>The Settings › Export file: every non-deleted entity and a schema version.</summary>
 public sealed record BackupFile
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
     public DateTime ExportedAt { get; init; }

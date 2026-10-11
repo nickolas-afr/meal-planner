@@ -19,3 +19,5 @@
 .name { font-size: 16px; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
 .meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .unit { color: var(--text-2); font-size: 15px; }
+.namecol { display: flex; flex-direction: column; min-width: 0; }
+.also { color: var(--text-2); font-size: 13px; font-weight: 400; }

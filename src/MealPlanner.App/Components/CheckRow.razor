@@ -14,7 +14,7 @@
                 }
             </span>
             <span class="text">
-                <span class="title">@Title</span>
+                <span class="title">@Title@if (TitleSuffix is not null) {<span class="suffix">@TitleSuffix</span>}</span>
                 @if (!string.IsNullOrEmpty(Subtitle))
                 {
                     <span class="sub">@Subtitle</span>
@@ -35,6 +35,8 @@
 @code {
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string? Subtitle { get; set; }
+    /// <summary>Optional content (a badge) shown after the title.</summary>
+    [Parameter] public RenderFragment? TitleSuffix { get; set; }
     /// <summary>Already formatted.</summary>
     [Parameter] public string? Quantity { get; set; }
     [Parameter] public bool Checked { get; set; }

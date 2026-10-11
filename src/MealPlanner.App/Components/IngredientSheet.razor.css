@@ -1,5 +1,47 @@
 .form { display: flex; flex-direction: column; gap: 16px; }
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .unit { position: relative; }
 .lock { position: absolute; right: 36px; bottom: 15px; color: var(--icon-muted); pointer-events: none; display: flex; }
 .note { margin: -6px 0 0; }
+
+.markets { display: flex; flex-direction: column; gap: 8px; }
+.mhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mhead .t-section-label { margin: 0; }
+.mnote { font-size: 13px; }
+.nomarkets { margin: 0; font-size: 15px; }
+.mcard {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+}
+.mrow {
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+    border-bottom: 1px solid var(--divider);
+}
+.mcard > :last-child .mrow:last-child,
+.mcard > .mrow:last-child { border-bottom: 0; }
+.num { width: 36px; padding-left: 16px; font-size: 15px; font-variant-numeric: tabular-nums; flex-shrink: 0; box-sizing: content-box; }
+.mname { flex: 1; min-width: 0; padding: 8px 8px 8px 0; font-size: 16px; font-weight: 500; color: var(--text); overflow-wrap: anywhere; }
+.mrow.empty .mname { padding-left: 16px; }
+.drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-height: 48px;
+    color: var(--icon-muted);
+    touch-action: none;
+    cursor: grab;
+}
+.remove {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    background: transparent;
+    border: 0;
+    color: var(--danger);
+}

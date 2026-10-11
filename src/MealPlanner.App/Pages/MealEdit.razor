@@ -209,8 +209,11 @@
         }
     }
 
-    private string MarketName(Ingredient i) =>
-        i.DefaultMarketId is { } id && State.Market(id) is { } m ? m.Name : "Anywhere";
+    private string MarketName(Ingredient i)
+    {
+        var live = IngredientMarkets.Of(i).Select(id => State.Market(id)).OfType<Market>().ToList();
+        return live.Count == 0 ? "Anywhere" : live.Count == 1 ? live[0].Name : $"{live[0].Name} +{live.Count - 1}";
+    }
 
     private void OnNameChanged(string value)
     {

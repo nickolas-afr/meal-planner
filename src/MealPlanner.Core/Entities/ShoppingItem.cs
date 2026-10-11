@@ -13,4 +13,5 @@ public sealed record ShoppingItem : Entity         // ingredient item: Id = Ids.
     public bool MarketOverridden { get; init; }    // moved for this week only
     public bool IsStaple { get; init; }
     public DateTime? CheckedAt { get; init; }      // null = not bought
+    public bool IsNeeded { get; init; }            // staple marked "Need to buy": listed and counted like a normal item
 }

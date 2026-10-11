@@ -128,6 +128,9 @@ public class SyncMergeTests
         Assert.True(c.IsDeleted);
         Assert.Equal(m.UpdatedAt, c.UpdatedAt);
         Assert.Equal(0, c.Version);
-        Assert.Equal(m, EntityTypes.Deserialize(c.Type, c.Json));
+        var back = Assert.IsType<Ingredient>(EntityTypes.Deserialize(c.Type, c.Json));
+        // Records compare list properties by reference, so compare MarketIds by content and the rest by value.
+        Assert.Equal(m.MarketIds, back.MarketIds);
+        Assert.Equal(m with { MarketIds = [] }, back with { MarketIds = [] });
     }
 }
